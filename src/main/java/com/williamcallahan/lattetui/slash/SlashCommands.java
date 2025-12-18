@@ -10,6 +10,7 @@ public final class SlashCommands {
     public static List<SlashCommand> defaults() {
         return List.of(
             new WeatherSlashCommand.Command(),
+            new ModelSlashCommand(),
             new NewSlashCommand.Command(),
             new ClearSlashCommand.Command(),
             new AboutSlashCommand.Command(),

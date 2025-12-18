@@ -10,6 +10,7 @@ import com.openai.models.chat.completions.ChatCompletionMessage;
 import com.openai.models.chat.completions.ChatCompletionMessageToolCall;
 import com.openai.models.chat.completions.ChatCompletionToolMessageParam;
 import com.openai.models.models.Model;
+import com.williamcallahan.ConfigException;
 import com.williamcallahan.domain.ChatMessage;
 import com.williamcallahan.domain.Conversation;
 import com.williamcallahan.domain.Role;
@@ -44,10 +45,41 @@ public final class OpenAiService {
      * so you don't have to manually configure keys here.
      */
     public OpenAiService() {
+        String apiKey = System.getenv("OPENAI_API_KEY");
+        String customBaseUrl = System.getenv("OPENAI_BASE_URL");
+
+        if (apiKey == null || apiKey.isBlank()) {
+            String target = (customBaseUrl == null || customBaseUrl.isBlank())
+                ? "the OpenAI API (https://api.openai.com/v1)"
+                : customBaseUrl;
+            throw new ConfigException("""
+
+                ┌─────────────────────────────────────────────────────────────────┐
+                │  Missing API Key                                                │
+                └─────────────────────────────────────────────────────────────────┘
+
+                The OPENAI_API_KEY environment variable is required but was not set.
+
+                Target endpoint: %s
+
+                Quick fix:
+                  1. Copy the example config:  cp .env-example .env
+                  2. Edit .env and add your API key
+                  3. Run again:  make run
+
+                Get an API key:
+                  → https://platform.openai.com/docs/quickstart
+
+                For alternative providers (OpenRouter, LMStudio, Ollama):
+                  → docs/environment-variables-api-keys.md
+
+                """.formatted(target));
+        }
+
         this.client = OpenAIOkHttpClient.builder()
             .fromEnv()
             .build();
-        this.baseUrl = System.getenv("OPENAI_BASE_URL");
+        this.baseUrl = customBaseUrl;
         this.tools = List.of(new WeatherForecastTool());
     }
 
@@ -62,21 +94,17 @@ public final class OpenAiService {
     /**
      * Fetches the list of available models from the API.
      *
-     * Useful for populating UI dropdowns. Returns empty list on failure so the UI degrades gracefully.
+     * @throws RuntimeException if the API call fails
      */
     public List<String> modelChoices() {
-        try {
-            return client.models()
-                .list()
-                .autoPager()
-                .stream()
-                .map(Model::id)
-                .filter(s -> s != null && !s.isBlank())
-                .distinct()
-                .toList();
-        } catch (Exception ignored) {
-            return List.of();
-        }
+        return client.models()
+            .list()
+            .autoPager()
+            .stream()
+            .map(Model::id)
+            .filter(s -> s != null && !s.isBlank())
+            .distinct()
+            .toList();
     }
 
     public ChatCompletion createChatCompletion(Conversation conversation, String modelOverride) {
