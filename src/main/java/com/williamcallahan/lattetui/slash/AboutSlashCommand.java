@@ -21,6 +21,12 @@ public final class AboutSlashCommand {
         }
 
         @Override
+        public ContextType contextType() {
+            // SYSTEM context so LLM can answer follow-up questions about the app/author
+            return ContextType.SYSTEM;
+        }
+
+        @Override
         public String run(String input) {
             return """
 
@@ -29,7 +35,7 @@ public final class AboutSlashCommand {
 
             GitHub Repo: https://github.com/WilliamAGH/brief
 
-            *About the Author*: 
+            *About the Author*:
             Website: williamcallahan.com
             Email: william@williamcallahan.com
             Twitter: https://x.com/WilliamCallahan
