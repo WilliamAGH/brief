@@ -8,6 +8,15 @@ Brief requires an OpenAI API key and supports optional configuration through env
 |----------|-------------|
 | `OPENAI_API_KEY` | Your OpenAI API key. Required for chat completions. |
 
+### Getting an OpenAI API Key
+
+1. Go to [platform.openai.com](https://platform.openai.com) and sign up or log in
+2. Navigate to **API Keys** in the left sidebar (or go directly to [platform.openai.com/api-keys](https://platform.openai.com/api-keys))
+3. Click **Create new secret key**, give it a name, and copy the key
+4. Add billing details under **Settings → Billing** (API access requires a paid account)
+
+For the full walkthrough, see the [OpenAI Quickstart Guide](https://platform.openai.com/docs/quickstart).
+
 ## Optional
 
 | Variable | Description |

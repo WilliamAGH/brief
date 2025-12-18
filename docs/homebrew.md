@@ -38,8 +38,11 @@ The workflow needs a Personal Access Token to push to the tap repo.
 ### Creating a Release
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+# Test the release build first
+make release-test V=0.1.0
+
+# If it looks good, push the release
+make release V=0.1.0
 ```
 
 ### User Commands
@@ -60,10 +63,29 @@ brew upgrade --fetch-HEAD brief
 
 ### Testing Locally
 
+**1. Test the build (in `brief` repo):**
+
 ```bash
-# In the homebrew-tap repo
-brew install --build-from-source Formula/brief.rb
-brew audit --strict Formula/brief.rb
+make build    # Build and install locally
+make run      # Run the app
+make dist     # Build distribution zip
+```
+
+**2. Test a release before pushing:**
+
+```bash
+make release-test V=0.1.0
+# Shows: zip path, SHA256, and next command
+```
+
+**3. Test the formula (in `homebrew-tap` repo):**
+
+```bash
+cd ~/Developer/git/williamagh-homebrew-tap
+
+brew audit --strict Formula/brief.rb      # Check for issues
+brew install --HEAD Formula/brief.rb      # Test head install
+brew uninstall brief                       # Cleanup
 ```
 
 ## Versioning
