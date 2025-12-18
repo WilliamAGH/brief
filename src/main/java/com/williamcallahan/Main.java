@@ -1,7 +1,14 @@
 package com.williamcallahan;
 
+import com.williamcallahan.domain.Conversation;
+import com.williamcallahan.lattetui.ChatConversationScreen;
 import com.williamcallahan.lattetui.WelcomeScreen;
+import org.flatscrew.latte.Model;
 import org.flatscrew.latte.Program;
+
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.UUID;
 
 /** Entry point for the brief TUI. */
 public class Main {
@@ -32,7 +39,11 @@ public class Main {
         // Set BRIEF_AUTOWRAP=1 to keep terminal default wrapping behavior.
         boolean disableAutoWrap = !"1".equals(System.getenv("BRIEF_AUTOWRAP"));
 
-        Program program = new Program(new WelcomeScreen());
+        // Check config early to skip welcome screen if user name is already saved
+        Config config = new Config();
+        Model startScreen = selectStartScreen(config);
+
+        Program program = new Program(startScreen);
         if (useAlt) {
             program = program.withAltScreen(); // fresh screen, restores original on exit
         }
@@ -59,8 +70,11 @@ public class Main {
             System.out.print(ENABLE_MOUSE_BUTTON_EVENT_TRACKING);
             System.out.flush();
         }
+        ConfigException configError = null;
         try {
             program.run();
+        } catch (ConfigException e) {
+            configError = e;
         } finally {
             if (enableSelectMouse) {
                 System.out.print(DISABLE_MOUSE_BUTTON_EVENT_TRACKING);
@@ -78,5 +92,45 @@ public class Main {
                 System.out.flush();
             }
         }
+        if (configError != null) {
+            System.err.println(configError.getMessage());
+            System.exit(1);
+        }
+    }
+
+    /**
+     * Decides which screen to start with based on saved config.
+     * If user name exists, skips WelcomeScreen and goes directly to chat.
+     */
+    private static Model selectStartScreen(Config config) {
+        if (!config.hasUserName()) {
+            return new WelcomeScreen(config);
+        }
+
+        // User name exists - go directly to chat
+        String userName = config.userName();
+        Conversation.ConversationBuilder convoBuilder = Conversation.builder()
+            .id("c_" + UUID.randomUUID())
+            .createdAt(OffsetDateTime.now(ZoneOffset.UTC))
+            .updatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+
+        // Priority: env var > saved config
+        String envModel = System.getenv("LLM_MODEL");
+        String model = null;
+        boolean needsModelSelection = false;
+
+        if (envModel != null && !envModel.isBlank()) {
+            model = envModel.trim();
+        } else if (config.hasModel()) {
+            model = config.model();
+        } else {
+            needsModelSelection = true;
+        }
+
+        if (model != null) {
+            convoBuilder.defaultModel(model);
+        }
+
+        return new ChatConversationScreen(userName, convoBuilder.build(), config, 80, 24, needsModelSelection);
     }
 }

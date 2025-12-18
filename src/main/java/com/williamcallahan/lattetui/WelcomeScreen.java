@@ -1,5 +1,6 @@
 package com.williamcallahan.lattetui;
 
+import com.williamcallahan.Config;
 import com.williamcallahan.domain.Conversation;
 import org.flatscrew.latte.Command;
 import org.flatscrew.latte.Message;
@@ -30,11 +31,13 @@ public class WelcomeScreen implements Model {
     private static final String APP_NAME = "brief";
     private static final String VERSION = "v0.1";
 
+    private final Config config;
     private TextInput textInput;
     private int width = 80;
     private int height = 24;
 
-    public WelcomeScreen() {
+    public WelcomeScreen(Config config) {
+        this.config = config;
         this.textInput = new TextInput();
         textInput.setPlaceholder("your name");
         textInput.setPromptStyle(TuiTheme.inputPrompt());
@@ -69,25 +72,10 @@ public class WelcomeScreen implements Model {
         if (msg instanceof KeyPressMessage keyPressMessage) {
             if (KeyAliases.getKeyType(KeyAlias.KeyEnter) == keyPressMessage.type()) {
                 String name = textInput.value();
-
-                Conversation.ConversationBuilder convoBuilder = Conversation.builder()
-                    .id("c_" + UUID.randomUUID())
-                    .createdAt(OffsetDateTime.now(ZoneOffset.UTC))
-                    .updatedAt(OffsetDateTime.now(ZoneOffset.UTC));
-
-                String model = System.getenv("LLM_MODEL");
-                if (model != null && !model.isBlank()) {
-                    convoBuilder.defaultModel(model.trim());
+                if (name != null && !name.isBlank()) {
+                    config.setUserName(name);
                 }
-                Conversation convo = convoBuilder.build();
-                ChatConversationScreen next = new ChatConversationScreen(name, convo, width, height);
-                return UpdateResult.from(
-                    next,
-                    batch(
-                        setWidowTitle("brief - " + convo.getDefaultModel()),
-                        Command.checkWindowSize()
-                    )
-                );
+                return transitionToChat(name);
             }
 
             if (KeyAliases.getKeyType(KeyAlias.KeyCtrlC) == keyPressMessage.type()
@@ -98,6 +86,40 @@ public class WelcomeScreen implements Model {
 
         UpdateResult<? extends Model> updateResult = textInput.update(msg);
         return UpdateResult.from(this, updateResult.command());
+    }
+
+    private UpdateResult<? extends Model> transitionToChat(String name) {
+        Conversation.ConversationBuilder convoBuilder = Conversation.builder()
+            .id("c_" + UUID.randomUUID())
+            .createdAt(OffsetDateTime.now(ZoneOffset.UTC))
+            .updatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+
+        // Priority: env var > saved config > prompt user
+        String envModel = System.getenv("LLM_MODEL");
+        String model = null;
+        boolean needsModelSelection = false;
+
+        if (envModel != null && !envModel.isBlank()) {
+            model = envModel.trim();
+        } else if (config.hasModel()) {
+            model = config.model();
+        } else {
+            needsModelSelection = true;
+        }
+
+        if (model != null) {
+            convoBuilder.defaultModel(model);
+        }
+
+        Conversation convo = convoBuilder.build();
+        ChatConversationScreen next = new ChatConversationScreen(name, convo, config, width, height, needsModelSelection);
+        return UpdateResult.from(
+            next,
+            batch(
+                setWidowTitle("brief - " + convo.getDefaultModel()),
+                Command.checkWindowSize()
+            )
+        );
     }
 
     @Override
@@ -154,6 +176,6 @@ public class WelcomeScreen implements Model {
     }
 
     public static void main(String[] args) {
-        new Program(new WelcomeScreen()).run();
+        new Program(new WelcomeScreen(new Config())).run();
     }
 }

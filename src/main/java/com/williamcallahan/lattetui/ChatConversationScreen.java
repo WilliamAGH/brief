@@ -1,8 +1,10 @@
 package com.williamcallahan.lattetui;
 
+import com.williamcallahan.Config;
 import com.williamcallahan.domain.ChatMessage;
 import com.williamcallahan.domain.Conversation;
 import com.williamcallahan.domain.Role;
+import com.williamcallahan.lattetui.slash.ModelSlashCommand;
 import com.williamcallahan.lattetui.slash.SlashCommand;
 import com.williamcallahan.lattetui.slash.SlashCommands;
 import com.williamcallahan.lattetui.slash.WeatherSlashCommand;
@@ -41,17 +43,24 @@ public final class ChatConversationScreen implements Model {
 
     private record AssistantReplyMessage(String text) implements Message {}
     private record ToolReplyMessage(String text) implements Message {}
+    /** Display-only output (not added to conversation or sent to LLM). */
+    private record LocalDisplayMessage(String text) implements Message {}
+    /** System context message (added to conversation as SYSTEM role for LLM context). */
+    private record SystemContextMessage(String text) implements Message {}
 
     private final Conversation conversation;
     private final String userName;
+    private final Config config;
 
     private final OpenAiService openAiService = new OpenAiService();
     private final List<SlashCommand> slashCommands = SlashCommands.defaults();
     private final TextInput composer = new TextInput();
     private final SlashCommandPalette slashPalette = new SlashCommandPalette();
+    private final ModelPalette modelPalette = new ModelPalette();
     private final boolean printToScrollback;
     private final boolean mouseSelectionEnabled;
     private final boolean showToolMessages;
+    private boolean needsModelSelection;
 
     private int width = 80;
     private int height = 24;
@@ -67,29 +76,22 @@ public final class ChatConversationScreen implements Model {
     private Spinner spinner = new Spinner(SpinnerType.DOT);
 
     /**
-     * Creates a chat screen with a default starting viewport size (80x24).
-     *
-     * Note: Latte only calls {@link Model#init()} for the initial model passed to {@code new Program(initialModel)}.
-     * When transitioning models, {@code init()} is not invoked, so prefer using
-     * {@link #ChatConversationScreen(String, Conversation, int, int)} when you already know the viewport.
-     */
-    public ChatConversationScreen(String userName, Conversation conversation) {
-        this(userName, conversation, 80, 24);
-    }
-
-    /**
      * Creates a chat screen with an explicit starting viewport size.
      *
      * @param userName User-visible label for the local user
      * @param conversation Backing conversation state
+     * @param config User configuration for persisting preferences
      * @param width Current terminal columns
      * @param height Current terminal rows
+     * @param needsModelSelection If true, opens model palette on first render
      */
-    public ChatConversationScreen(String userName, Conversation conversation, int width, int height) {
+    public ChatConversationScreen(String userName, Conversation conversation, Config config, int width, int height, boolean needsModelSelection) {
         this.userName = (userName == null || userName.isBlank()) ? "You" : userName.trim();
         this.conversation = conversation;
+        this.config = config;
         this.width = Math.max(40, width);
         this.height = Math.max(12, height);
+        this.needsModelSelection = needsModelSelection;
         this.printToScrollback = "1".equals(System.getenv("BRIEF_SCROLLBACK"));
         this.mouseSelectionEnabled = "select".equalsIgnoreCase(resolveMouseMode());
         // Default OFF: tool JSON is usually noisy. Set BRIEF_SHOW_TOOLS=1 for debugging.
@@ -122,6 +124,11 @@ public final class ChatConversationScreen implements Model {
             width = Math.max(40, w.width());
             height = Math.max(12, w.height());
             composer.setWidth(Math.max(20, width - 6));
+
+            if (needsModelSelection) {
+                needsModelSelection = false;
+                return openModelPalette();
+            }
             return UpdateResult.from(this);
         }
 
@@ -154,10 +161,26 @@ public final class ChatConversationScreen implements Model {
         }
 
         if (msg instanceof ToolReplyMessage reply) {
-            append(Role.TOOL, ChatMessage.Source.TOOL_OUTPUT, reply.text());
+            // ToolReplyMessage is only for actual tool call results - displayed but not added to conversation
+            // since there's no preceding tool_call. Use LocalDisplayMessage or SystemContextMessage instead.
             waiting = false;
             historyViewport.follow();
             return UpdateResult.from(this, maybePrintToScrollback("Tool", reply.text()));
+        }
+
+        if (msg instanceof LocalDisplayMessage reply) {
+            // Display-only: shown in UI but NOT added to conversation (no LLM context)
+            waiting = false;
+            historyViewport.follow();
+            return UpdateResult.from(this, maybePrintToScrollback("", reply.text()));
+        }
+
+        if (msg instanceof SystemContextMessage reply) {
+            // Added to conversation as SYSTEM role so LLM can use it for follow-up questions
+            append(Role.SYSTEM, ChatMessage.Source.SYSTEM, reply.text());
+            waiting = false;
+            historyViewport.follow();
+            return UpdateResult.from(this, maybePrintToScrollback("", reply.text()));
         }
 
         if (msg instanceof KeyPressMessage key) {
@@ -166,11 +189,26 @@ public final class ChatConversationScreen implements Model {
             }
 
             if (KeyType.keyESC == key.type()) {
+                if (modelPalette.isOpen()) {
+                    modelPalette.close();
+                    return UpdateResult.from(this);
+                }
                 if (slashPalette.isOpen()) {
                     slashPalette.close();
                     return UpdateResult.from(this);
                 }
                 return UpdateResult.from(this, QuitMessage::new);
+            }
+
+            if (modelPalette.isOpen()) {
+                ModelPalette.PaletteResult result = modelPalette.update(key);
+                if (result.handled()) {
+                    if (result.selectedModel() != null) {
+                        conversation.setDefaultModel(result.selectedModel());
+                        config.setModel(result.selectedModel());
+                    }
+                    return UpdateResult.from(this);
+                }
             }
 
             if (slashPalette.isOpen() || (!waiting && key.type() == KeyType.KeyRunes)) {
@@ -308,6 +346,7 @@ public final class ChatConversationScreen implements Model {
         lines.add(TuiTheme.padRight(footer, innerWidth));
 
         slashPalette.applyOverlay(lines, innerWidth, innerHeight, dividerRow, slashCommands, composer.value());
+        modelPalette.applyOverlay(lines, innerWidth, innerHeight, dividerRow);
 
         while (lines.size() < innerHeight) {
             lines.add(" ".repeat(innerWidth));
@@ -347,10 +386,16 @@ public final class ChatConversationScreen implements Model {
             SlashCommand sc = SlashCommands.matchInvocation(slashCommands, text);
             if (sc != null && sc.quits()) return UpdateResult.from(this, QuitMessage::new);
 
+            // /model opens the model selection palette
+            if (sc instanceof ModelSlashCommand) {
+                composer.reset();
+                return openModelPalette();
+            }
+
             // Session lifecycle commands: rotate conversation id by transitioning to a fresh screen.
             if (sc != null && ("/clear".equals(sc.name()) || "/new".equals(sc.name()))) {
                 Conversation next = newConversationLikeCurrent();
-                ChatConversationScreen nextScreen = new ChatConversationScreen(userName, next, width, height);
+                ChatConversationScreen nextScreen = new ChatConversationScreen(userName, next, config, width, height, false);
                 return UpdateResult.from(
                     nextScreen,
                     batch(
@@ -383,6 +428,22 @@ public final class ChatConversationScreen implements Model {
         return UpdateResult.from(this, batch(printUser, call, spinner.init()));
     }
 
+    private UpdateResult<? extends Model> openModelPalette() {
+        try {
+            List<String> models = openAiService.modelChoices();
+            if (models.isEmpty()) {
+                return UpdateResult.from(this, () -> new ToolReplyMessage("No models available from API"));
+            }
+            modelPalette.open(models);
+            return UpdateResult.from(this);
+        } catch (Exception e) {
+            String error = e.getMessage();
+            return UpdateResult.from(this, () -> new ToolReplyMessage(
+                "Failed to fetch models: " + (error == null ? e.getClass().getSimpleName() : error)
+            ));
+        }
+    }
+
     private Conversation newConversationLikeCurrent() {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         return Conversation.builder()
@@ -398,18 +459,20 @@ public final class ChatConversationScreen implements Model {
     private Command slashOrChatCall(String text) {
         SlashCommand sc = text != null && text.startsWith("/") ? SlashCommands.matchInvocation(slashCommands, text) : null;
         if (text != null && text.startsWith("/") && sc == null) {
-            return () -> new ToolReplyMessage("Unknown slash command: " + text.split("\\s+", 2)[0]);
+            return () -> new LocalDisplayMessage("Unknown slash command: " + text.split("\\s+", 2)[0]);
         }
         if (sc != null) {
             return () -> {
                 try {
                     String out = sc.run(text);
-                    return sc.addsToConversationContext()
-                        ? new AssistantReplyMessage(out)
-                        : new ToolReplyMessage(out);
+                    return switch (sc.contextType()) {
+                        case ASSISTANT -> new AssistantReplyMessage(out);
+                        case SYSTEM -> new SystemContextMessage(out);
+                        case NONE -> new LocalDisplayMessage(out);
+                    };
                 } catch (Throwable t) {
                     String err = t.getMessage();
-                    return new ToolReplyMessage(
+                    return new LocalDisplayMessage(
                         "ERROR " + t.getClass().getSimpleName()
                             + (err == null || err.isBlank() ? "" : (": " + err))
                     );
@@ -454,6 +517,20 @@ public final class ChatConversationScreen implements Model {
             TuiTheme.shortcutHint("/", "commands"),
             TuiTheme.shortcutHint("ctrl+c", "quit")
         );
+
+        String configError = config.transientError(System.currentTimeMillis());
+        if (configError != null) {
+            String errorText = TuiTheme.warning().render(configError);
+            int shortcutsLen = TuiTheme.stripAnsi(shortcuts).length();
+            int errorLen = configError.length();
+            int gap = width - shortcutsLen - errorLen - 2;
+            if (gap > 0) {
+                return shortcuts + " ".repeat(gap) + errorText;
+            }
+            // Not enough room — show error only
+            return TuiTheme.truncate(errorText, width);
+        }
+
         return TuiTheme.truncate(shortcuts, width);
     }
 
