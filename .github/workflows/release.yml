@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout brief
+        uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25-ea'
+
+      - name: Extract version from tag
+        id: version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: echo "VERSION=${REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build distribution
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: ./gradlew distZip -Pversion="$VERSION"
+
+      - name: Calculate SHA256
+        id: sha
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          SHA=$(shasum -a 256 "build/distributions/brief-${VERSION}.zip" | cut -d' ' -f1)
+          echo "SHA256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/distributions/brief-${{ steps.version.outputs.VERSION }}.zip
+          generate_release_notes: true
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: WilliamAGH/homebrew-tap
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula in tap
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          SHA256: ${{ steps.sha.outputs.SHA256 }}
+        run: |
+          cd homebrew-tap
+          sed -i "s|\${VERSION}|${VERSION}|g" Formula/brief.rb
+          sed -i "s|\${SHA256}|${SHA256}|g" Formula/brief.rb
+
+      - name: Commit and push to tap
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/brief.rb
+          git commit -m "Update brief to v${VERSION}"
+          git push
