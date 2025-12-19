@@ -28,13 +28,17 @@ public final class OpenAiService {
                 │  Missing API Key                                                │
                 └─────────────────────────────────────────────────────────────────┘
 
-                No API key found in environment (OPENAI_API_KEY) or config file.
+                No API key found in config file or environment.
 
                 Target endpoint: %s
 
-                Quick fix (choose one):
-                  • Set environment variable:  export OPENAI_API_KEY=your-key
-                  • Or run the app and enter your key when prompted
+                For users (Homebrew install):
+                  • Run the app normally — it will prompt for your key
+                  • Key is saved to: ~/.config/brief/config
+
+                For developers (local build):
+                  • Copy .env-example to .env and add your key
+                  • Or: export OPENAI_API_KEY=your-key
 
                 Get an API key:
                   → https://platform.openai.com/docs/quickstart

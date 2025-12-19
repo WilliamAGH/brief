@@ -28,12 +28,13 @@ Or install nightly (latest from main):
 brew install --head williamagh/tap/brief
 ```
 
-Then configure your API key ([setup guide](docs/environment-variables-api-keys.md)) and run:
+Then run `brief` — the app will prompt you for your API key on first launch and save it to `~/.config/brief/config`.
 
-## Running the Application
 ```bash
 brief
 ```
+
+For alternative providers (OpenRouter, Ollama, LMStudio) or advanced configuration, see the [setup guide](docs/environment-variables-api-keys.md).
 
 ## Development
 
@@ -41,16 +42,18 @@ brief
 
 - Java 25
 - Gradle 9.x
-- API key ([setup guide](docs/environment-variables-api-keys.md))
+- OpenAI API key (or compatible provider)
 
 ### Setup
 
 ```bash
 git clone https://github.com/WilliamAGH/brief.git
 cd brief
-cp .env-example .env   # then edit with your API key
+cp .env-example .env   # edit with your API key (development only)
 make run
 ```
+
+> **Note:** The `.env` file is for local development with `make run`, and only for users who cloned this repository from GitHub. End users installing via Homebrew should use the in-app prompt or set `OPENAI_API_KEY` in their shell. See the [setup guide](docs/environment-variables-api-keys.md) for all options.
 
 ### Development Commands
 
