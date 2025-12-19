@@ -1,140 +1,300 @@
 package com.williamcallahan.lattetui;
 
+import org.flatscrew.latte.Command;
+import org.flatscrew.latte.input.MouseAction;
 import org.flatscrew.latte.input.MouseButton;
 import org.flatscrew.latte.input.MouseMessage;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
-/** Selection state and mapping from mouse coordinates to visible history lines. */
+/**
+ * Manages mouse-based text selection and interaction within the chat history.
+ * Tracks selection coordinates and maps them to visible history lines for highlighting and copying.
+ */
 final class MouseSelectionController {
+    private static final Pattern URL_PATTERN = Pattern.compile(
+        "^(https?://|www\\.)[a-zA-Z0-0+&@#/%?=~_|!:,.;]*[a-zA-Z0-0+&@#/%=~_|]$"
+    );
+
     private boolean selecting = false;
     private boolean selectionMoved = false;
-    private int selectionStart = -1;
-    private int selectionEnd = -1;
+    private int selectionStartLineIndex = -1;
+    private int selectionStartCol = -1;
+    private int selectionEndLineIndex = -1;
+    private int selectionEndCol = -1;
 
     private long lastActionAtMs = 0L;
     private String lastStatus = null;
 
     private int historyStartRow = 0;
     private int historyStartCol = 0;
+    private int historyWindowStartIndex = 0;
     private List<String> visibleHistoryPlain = List.of();
+    private List<String> allHistoryPlain = List.of();
 
+    /** @return true if a selection drag is currently in progress. */
     boolean isSelecting() {
         return selecting;
     }
 
-    int selectionStart() {
-        return selectionStart;
+    /** @return true if a selection exists (even if not currently dragging). */
+    boolean hasSelection() {
+        return selectionStartLineIndex != -1 && selectionEndLineIndex != -1;
     }
 
-    int selectionEnd() {
-        return selectionEnd;
-    }
+    int selectionStartLineIndex() { return selectionStartLineIndex; }
+    int selectionStartCol() { return selectionStartCol; }
+    int selectionEndLineIndex() { return selectionEndLineIndex; }
+    int selectionEndCol() { return selectionEndCol; }
 
+    /**
+     * Returns a transient status message (e.g., "COPIED") to display in the UI.
+     */
     String transientStatus(long nowMs) {
         if (lastStatus == null) return null;
         return (nowMs - lastActionAtMs) < 1200 ? lastStatus : null;
     }
 
-    void updateHistoryMapping(int startRow, int startCol, List<String> visiblePlain) {
+    /**
+     * Updates the mapping between screen coordinates and history lines.
+     */
+    void updateHistoryMapping(int startRow, int startCol, int windowStartIndex,
+                              List<String> visiblePlain, List<String> allPlain) {
         this.historyStartRow = startRow;
         this.historyStartCol = startCol;
+        this.historyWindowStartIndex = Math.max(0, windowStartIndex);
         this.visibleHistoryPlain = (visiblePlain == null) ? List.of() : visiblePlain;
+        this.allHistoryPlain = (allPlain == null) ? List.of() : allPlain;
+        clampSelectionToHistory();
     }
 
     /**
-     * Handles non-wheel mouse messages for selection/open/copy.
-     * Returns true when the UI should re-render.
+     * Clears the current selection state.
      */
-    boolean handle(MouseMessage mouse) {
-        if (mouse == null || mouse.isWheel()) return false;
-
-        int idx = historyLineIndex(mouse.row());
-        if (idx >= 0) {
-            if (mouse.getAction() == org.flatscrew.latte.input.MouseAction.MouseActionPress
-                && mouse.getButton() == MouseButton.MouseButtonLeft) {
-                selecting = true;
-                selectionMoved = false;
-                selectionStart = idx;
-                selectionEnd = idx;
-                return true;
-            }
-            if (mouse.getAction() == org.flatscrew.latte.input.MouseAction.MouseActionMotion && selecting) {
-                selectionMoved = true;
-                selectionEnd = idx;
-                return true;
-            }
-            if (mouse.getAction() == org.flatscrew.latte.input.MouseAction.MouseActionRelease && selecting) {
-                selecting = false;
-                selectionEnd = idx;
-
-                if (!selectionMoved) {
-                    boolean opened = openLinkUnderMouse(mouse.row(), mouse.column());
-                    if (!opened) copySelectedHistoryLines();
-                } else {
-                    copySelectedHistoryLines();
-                }
-                return true;
-            }
-        } else if (mouse.getAction() == org.flatscrew.latte.input.MouseAction.MouseActionRelease) {
-            selecting = false;
-            return true;
-        }
-
-        return false;
+    void clearSelection() {
+        selecting = false;
+        selectionMoved = false;
+        selectionStartLineIndex = -1;
+        selectionStartCol = -1;
+        selectionEndLineIndex = -1;
+        selectionEndCol = -1;
     }
 
-    private int historyLineIndex(int mouseRow) {
-        int idx = mouseRow - historyStartRow;
-        if (idx < 0 || idx >= visibleHistoryPlain.size()) return -1;
-        return idx;
+    /**
+     * Handles mouse messages for selection, link opening, and copying.
+     */
+    Command handle(MouseMessage mouse) {
+        if (mouse == null || mouse.isWheel()) return null;
+
+        int visibleRowIndex = visibleLineIndex(mouse.row());
+        int col = mouse.column() - historyStartCol;
+        if (col < 0) col = 0;
+
+        List<Command> commands = new ArrayList<>();
+
+        // Manage mouse cursor shape based on state and hover position
+        if (mouse.getAction() == MouseAction.MouseActionRelease && !selecting) {
+            commands.add(Command.resetMouseCursor());
+        } else if (selecting) {
+            commands.add(Command.setMouseCursorText());
+        } else if (visibleRowIndex >= 0) {
+            String line = (visibleRowIndex < visibleHistoryPlain.size()) ? visibleHistoryPlain.get(visibleRowIndex) : null;
+            if (line != null && col < line.length()) {
+                String token = tokenAt(line, col);
+                if (isPotentialUrl(token)) {
+                    commands.add(Command.setMouseCursorPointer());
+                } else {
+                    commands.add(Command.setMouseCursorText());
+                }
+            } else {
+                commands.add(Command.setMouseCursorText());
+            }
+        } else {
+            commands.add(Command.resetMouseCursor());
+        }
+
+        // Handle selection state transitions
+        if (mouse.getAction() == MouseAction.MouseActionPress && mouse.getButton() == MouseButton.MouseButtonLeft) {
+            if (visibleRowIndex >= 0) {
+                int startLineIndex = clampLineIndex(absoluteLineIndexFromVisibleRow(visibleRowIndex));
+                if (startLineIndex == -1) {
+                    clearSelection();
+                    return Command.batch(commands);
+                }
+                selecting = true;
+                selectionMoved = false;
+                selectionStartLineIndex = startLineIndex;
+                selectionStartCol = col;
+                selectionEndLineIndex = startLineIndex;
+                selectionEndCol = col;
+            } else {
+                clearSelection();
+            }
+            return Command.batch(commands);
+        }
+
+        if (mouse.getAction() == MouseAction.MouseActionMotion && selecting) {
+            selectionMoved = true;
+            // Clamp motion to history area if it leaves
+            int targetLineIndex = clampLineIndexForRow(mouse.row());
+            if (targetLineIndex != -1) {
+                selectionEndLineIndex = targetLineIndex;
+            }
+            selectionEndCol = col;
+            return Command.batch(commands);
+        }
+
+        if (mouse.getAction() == MouseAction.MouseActionRelease && selecting) {
+            selecting = false;
+            int targetLineIndex = clampLineIndexForRow(mouse.row());
+            if (targetLineIndex != -1) {
+                selectionEndLineIndex = targetLineIndex;
+            }
+            selectionEndCol = col;
+
+            if (!selectionMoved) {
+                boolean opened = openLinkUnderMouse(mouse.row(), mouse.column());
+                if (!opened) {
+                    Command copyCmd = copySelectedHistoryLines();
+                    if (copyCmd != null) commands.add(copyCmd);
+                } else {
+                    clearSelection();
+                }
+            } else {
+                Command copyCmd = copySelectedHistoryLines();
+                if (copyCmd != null) commands.add(copyCmd);
+            }
+            return Command.batch(commands);
+        }
+
+        return commands.isEmpty() ? null : Command.batch(commands);
+    }
+
+    private int visibleLineIndex(int mouseRow) {
+        int index = mouseRow - historyStartRow;
+        if (index < 0 || index >= visibleHistoryPlain.size()) return -1;
+        return index;
+    }
+
+    private int absoluteLineIndexFromVisibleRow(int visibleRowIndex) {
+        return historyWindowStartIndex + visibleRowIndex;
+    }
+
+    private int clampLineIndex(int lineIndex) {
+        if (allHistoryPlain.isEmpty()) return -1;
+        if (lineIndex < 0) return 0;
+        int maxIndex = allHistoryPlain.size() - 1;
+        return Math.min(lineIndex, maxIndex);
+    }
+
+    private int clampLineIndexForRow(int mouseRow) {
+        if (visibleHistoryPlain.isEmpty()) return -1;
+        int maxLineIndex = allHistoryPlain.isEmpty() ? -1 : allHistoryPlain.size() - 1;
+        if (maxLineIndex < 0) return -1;
+        if (mouseRow < historyStartRow) return historyWindowStartIndex;
+        int lastVisibleRow = historyStartRow + visibleHistoryPlain.size() - 1;
+        if (mouseRow > lastVisibleRow) {
+            return Math.min(historyWindowStartIndex + visibleHistoryPlain.size() - 1, maxLineIndex);
+        }
+        return Math.min(historyWindowStartIndex + (mouseRow - historyStartRow), maxLineIndex);
+    }
+
+    private boolean isPotentialUrl(String token) {
+        if (token == null) return false;
+        String t = token.trim();
+        // Simple heuristic: must contain a dot and start with common URL prefixes
+        // or look like a domain name.
+        t = stripPunctuation(t);
+        if (t.isEmpty()) return false;
+
+        return URL_PATTERN.matcher(t).matches() ||
+               (t.contains(".") && (t.toLowerCase().startsWith("http") || t.toLowerCase().startsWith("www")));
+    }
+
+    private String stripPunctuation(String t) {
+        return t.replaceAll("^[\"'\\[\\(<{`]+|[\"'\\]\\)>}`.,]+$", "");
     }
 
     private boolean openLinkUnderMouse(int mouseRow, int mouseCol) {
-        int lineIndex = historyLineIndex(mouseRow);
-        if (lineIndex < 0) return false;
+        int visibleRowIndex = visibleLineIndex(mouseRow);
+        if (visibleRowIndex < 0) return false;
 
         int col = mouseCol - historyStartCol;
         if (col < 0) col = 0;
 
-        String line = visibleHistoryPlain.get(lineIndex);
+        String line = visibleHistoryPlain.get(visibleRowIndex);
         if (line == null || line.isBlank()) return false;
         if (col >= line.length()) col = line.length() - 1;
 
         String token = tokenAt(line, col);
-        if (token == null || token.isBlank()) return false;
-
-        String url = normalizeUrlToken(token);
+        String url = normalizeUrl(token);
         if (url == null) return false;
 
-        boolean ok = openUrl(url);
-        if (ok) {
+        if (openUrl(url)) {
             lastActionAtMs = System.currentTimeMillis();
             lastStatus = "OPENED";
-            selectionStart = -1;
-            selectionEnd = -1;
+            return true;
         }
-        return ok;
+        return false;
     }
 
-    private void copySelectedHistoryLines() {
-        if (visibleHistoryPlain.isEmpty() || selectionStart < 0 || selectionEnd < 0) return;
-        int start = Math.min(selectionStart, selectionEnd);
-        int end = Math.max(selectionStart, selectionEnd);
-        start = Math.max(0, Math.min(start, visibleHistoryPlain.size() - 1));
-        end = Math.max(0, Math.min(end, visibleHistoryPlain.size() - 1));
+    private String normalizeUrl(String token) {
+        if (token == null) return null;
+        String t = stripPunctuation(token.trim());
+        if (t.isEmpty()) return null;
 
-        List<String> lines = visibleHistoryPlain.subList(start, end + 1);
-        String text = String.join("\n", lines).trim();
-        if (text.isBlank()) return;
+        if (t.toLowerCase().startsWith("http://") || t.toLowerCase().startsWith("https://")) return t;
+        if (t.toLowerCase().startsWith("www.")) return "https://" + t;
 
-        boolean ok = copyToClipboard(text);
+        // Only return as URL if it matches our pattern
+        if (URL_PATTERN.matcher(t).matches()) {
+            return t.contains("://") ? t : "https://" + t;
+        }
+        return null;
+    }
+
+    private Command copySelectedHistoryLines() {
+        if (!hasSelection() || allHistoryPlain.isEmpty()) return null;
+
+        int r1 = selectionStartLineIndex;
+        int c1 = selectionStartCol;
+        int r2 = selectionEndLineIndex;
+        int c2 = selectionEndCol;
+
+        if (r1 > r2 || (r1 == r2 && c1 > c2)) {
+            int tr = r1; r1 = r2; r2 = tr;
+            int tc = c1; c1 = c2; c2 = tc;
+        }
+
+        StringBuilder text = new StringBuilder();
+        for (int r = r1; r <= r2; r++) {
+            if (r < 0 || r >= allHistoryPlain.size()) continue;
+            String line = allHistoryPlain.get(r);
+            if (line == null) continue;
+
+            if (r == r1 && r == r2) {
+                int start = Math.max(0, Math.min(c1, line.length()));
+                int end = Math.max(0, Math.min(c2, line.length()));
+                text.append(line.substring(Math.min(start, end), Math.max(start, end)));
+            } else if (r == r1) {
+                int start = Math.max(0, Math.min(c1, line.length()));
+                text.append(line.substring(Math.min(start, line.length()))).append("\n");
+            } else if (r == r2) {
+                int end = Math.max(0, Math.min(c2, line.length()));
+                text.append(line.substring(0, Math.min(end, line.length())));
+            } else {
+                text.append(line).append("\n");
+            }
+        }
+
+        String result = text.toString().trim();
+        if (result.isEmpty()) return null;
+
         lastActionAtMs = System.currentTimeMillis();
-        lastStatus = ok ? "COPIED" : "COPY-ERR";
-        selectionStart = -1;
-        selectionEnd = -1;
+        lastStatus = "COPIED";
+        return Command.copyToClipboard(result);
     }
 
     private static String tokenAt(String line, int col) {
@@ -150,72 +310,34 @@ final class MouseSelectionController {
         return line.substring(left, right).trim();
     }
 
-    private static String normalizeUrlToken(String token) {
-        if (token == null) return null;
-        String t = token.trim();
-        if (t.isEmpty()) return null;
-
-        // Strip common surrounding punctuation from markdown/parentheses.
-        t = t.replaceAll("^[\"'\\[\\(<{`]+|[\"'\\]\\)>}`.,]+$", "");
-
-        if (t.isEmpty()) return null;
-
-        String lower = t.toLowerCase();
-        if (lower.startsWith("http://") || lower.startsWith("https://")) return t;
-
-        // Bare domains like github.com/foo
-        if (t.contains(".") && !t.contains("://") && !t.contains("@") && !t.contains("..")) {
-            return "https://" + t;
-        }
-        return null;
-    }
-
     private static boolean openUrl(String url) {
-        try {
-            if (java.awt.Desktop.isDesktopSupported()) {
-                java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
-                if (desktop.isSupported(java.awt.Desktop.Action.BROWSE)) {
-                    desktop.browse(java.net.URI.create(url));
-                    return true;
-                }
-            }
-        } catch (Throwable ignored) {}
-
         try {
             String os = System.getProperty("os.name", "").toLowerCase();
             if (os.contains("mac")) {
                 new ProcessBuilder("open", url).start();
                 return true;
-            }
-            if (os.contains("nix") || os.contains("nux") || os.contains("linux")) {
+            } else if (os.contains("nix") || os.contains("nux") || os.contains("linux")) {
                 new ProcessBuilder("xdg-open", url).start();
                 return true;
+            } else if (os.contains("win")) {
+                new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
+                return true;
             }
-        } catch (Throwable ignored) {}
-
+        } catch (Exception ignored) {}
         return false;
     }
 
-    private static boolean copyToClipboard(String text) {
-        try {
-            String os = System.getProperty("os.name", "").toLowerCase();
-            if (os.contains("mac")) {
-                Process p = new ProcessBuilder("pbcopy").start();
-                p.getOutputStream().write(text.getBytes(StandardCharsets.UTF_8));
-                p.getOutputStream().close();
-                p.waitFor();
-                return p.exitValue() == 0;
-            }
-        } catch (Throwable ignored) {
-            // fall through to OSC52
+    private void clampSelectionToHistory() {
+        if (allHistoryPlain.isEmpty()) {
+            clearSelection();
+            return;
         }
-        try {
-            String b64 = Base64.getEncoder().encodeToString(text.getBytes(StandardCharsets.UTF_8));
-            System.out.print("\u001b]52;c;" + b64 + "\u0007");
-            System.out.flush();
-            return true;
-        } catch (Throwable t) {
-            return false;
+        int maxIndex = allHistoryPlain.size() - 1;
+        if (selectionStartLineIndex != -1) {
+            selectionStartLineIndex = Math.max(0, Math.min(selectionStartLineIndex, maxIndex));
+        }
+        if (selectionEndLineIndex != -1) {
+            selectionEndLineIndex = Math.max(0, Math.min(selectionEndLineIndex, maxIndex));
         }
     }
 }
