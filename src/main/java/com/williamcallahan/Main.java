@@ -15,6 +15,7 @@ public class Main {
     private static final String DISABLE_MOUSE_BUTTON_EVENT_TRACKING = "\u001b[?1002l";
     private static final String ENABLE_MOUSE_SGR = "\u001b[?1006h";
     private static final String DISABLE_MOUSE_SGR = "\u001b[?1006l";
+    private static final String RESET_MOUSE_CURSOR = "\u001b]22;default\u001b\\";
 
     public static void main(String[] args) {
         // Default OFF so terminals keep normal scrollback.
@@ -71,11 +72,12 @@ public class Main {
             if (useAlt) {
                 program = program.withAltScreen();
             }
-            if ("1".equals(mouseMode)) {
+            if ("1".equals(mouseMode) || "select".equals(mouseMode)) {
                 program = program.withMouseAllMotion();
             }
             program.run();
         } finally {
+            System.out.print(RESET_MOUSE_CURSOR);
             if (enableSelectMouse) {
                 System.out.print(DISABLE_MOUSE_BUTTON_EVENT_TRACKING);
                 System.out.print(DISABLE_MOUSE_SGR);
