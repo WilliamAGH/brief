@@ -23,5 +23,3 @@ public final class ChatCompletionService {
         return openAi.client().chat().completions().create(params);
     }
 }
-
-
