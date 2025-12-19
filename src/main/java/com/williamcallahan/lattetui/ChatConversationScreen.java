@@ -55,7 +55,8 @@ public final class ChatConversationScreen implements Model {
     private final String userName;
     private final Config config;
 
-    private final OpenAiService openAi;
+    private final OpenAiService openAiService;
+    private final ChatCompletionService chatCompletionService;
     private final ToolExecutor toolExecutor;
     private final List<SlashCommand> slashCommands = SlashCommands.defaults();
     private final TextInput composer = new TextInput();
@@ -80,16 +81,17 @@ public final class ChatConversationScreen implements Model {
     private Spinner spinner = new Spinner(SpinnerType.DOT);
 
     /**
-     * Creates a chat screen with an explicit starting viewport size.
+     * Creates a chat screen with explicit viewport dimensions.
      *
      * @param userName User-visible label for the local user
      * @param conversation Backing conversation state
      * @param config User configuration for persisting preferences
-     * @param width Current terminal columns
-     * @param height Current terminal rows
+     * @param width Initial viewport width
+     * @param height Initial viewport height
      * @param needsModelSelection If true, opens model palette on first render
      */
-    public ChatConversationScreen(String userName, Conversation conversation, Config config, int width, int height, boolean needsModelSelection) {
+    public ChatConversationScreen(String userName, Conversation conversation, Config config,
+                                  int width, int height, boolean needsModelSelection) {
         this.userName = (userName == null || userName.isBlank()) ? "You" : userName.trim();
         this.conversation = conversation;
         this.config = config;
@@ -98,11 +100,11 @@ public final class ChatConversationScreen implements Model {
         this.needsModelSelection = needsModelSelection;
         this.printToScrollback = "1".equals(System.getenv("BRIEF_SCROLLBACK"));
         this.mouseSelectionEnabled = "select".equalsIgnoreCase(resolveMouseMode());
-        // Default OFF: tool JSON is usually noisy. Set BRIEF_SHOW_TOOLS=1 for debugging.
         this.showToolMessages = "1".equals(System.getenv("BRIEF_SHOW_TOOLS"));
 
-        this.openAi = new OpenAiService(config);
-        this.toolExecutor = new ToolExecutor(new ChatCompletionService(openAi), List.of(new WeatherForecastTool()));
+        this.openAiService = new OpenAiService(config);
+        this.chatCompletionService = new ChatCompletionService(openAiService);
+        this.toolExecutor = new ToolExecutor(chatCompletionService, List.of(new WeatherForecastTool()));
 
         composer.setPrompt("> ");
         composer.setPlaceholder("Ask me anything...");
@@ -274,9 +276,6 @@ public final class ChatConversationScreen implements Model {
 
     @Override
     public String view() {
-        // Latte `Style.width/height` apply *before* borders/margins; borders add additional rows/cols.
-        // If I set width/height to the terminal dimensions directly, the rendered frame becomes larger
-        // than the terminal and Latte's renderer truncates it (making the right/bottom borders look wrong).
         int viewportWidth = Math.max(40, width);
         int viewportHeight = Math.max(12, height);
 
@@ -371,7 +370,6 @@ public final class ChatConversationScreen implements Model {
         text = text.trim();
         if (text.isEmpty() || waiting) return UpdateResult.from(this);
 
-        // /weather is LLM-routed: convert to a user prompt and let the model choose the tool call.
         if (text.equals("/weather") || text.startsWith("/weather ")) {
             String userRequest = WeatherSlashCommand.toUserRequest(text);
             String routing = WeatherSlashCommand.toLlmPrompt(text);
@@ -393,13 +391,11 @@ public final class ChatConversationScreen implements Model {
             SlashCommand sc = SlashCommands.matchInvocation(slashCommands, text);
             if (sc != null && sc.quits()) return UpdateResult.from(this, QuitMessage::new);
 
-            // /model opens the model selection palette
             if (sc instanceof ModelSlashCommand) {
                 composer.reset();
                 return openModelPalette();
             }
 
-            // Session lifecycle commands: rotate conversation id by transitioning to a fresh screen.
             if (sc != null && ("/clear".equals(sc.name()) || "/new".equals(sc.name()))) {
                 Conversation next = newConversationLikeCurrent();
                 ChatConversationScreen nextScreen = new ChatConversationScreen(userName, next, config, width, height, false);
@@ -412,7 +408,6 @@ public final class ChatConversationScreen implements Model {
                 );
             }
 
-            // Other slash commands are local-only: don't append to the LLM conversation.
             composer.reset();
             waiting = true;
             historyViewport.follow();
@@ -437,15 +432,15 @@ public final class ChatConversationScreen implements Model {
 
     private UpdateResult<? extends Model> openModelPalette() {
         try {
-            List<String> models = openAi.modelChoices();
+            List<String> models = openAiService.modelChoices();
             if (models.isEmpty()) {
-                return UpdateResult.from(this, () -> new ToolReplyMessage("No models available from API"));
+                return UpdateResult.from(this, () -> new LocalDisplayMessage("No models available from API"));
             }
             modelPalette.open(models);
             return UpdateResult.from(this);
         } catch (Exception e) {
             String error = e.getMessage();
-            return UpdateResult.from(this, () -> new ToolReplyMessage(
+            return UpdateResult.from(this, () -> new LocalDisplayMessage(
                 "Failed to fetch models: " + (error == null ? e.getClass().getSimpleName() : error)
             ));
         }
@@ -493,7 +488,7 @@ public final class ChatConversationScreen implements Model {
                 return new AssistantReplyMessage(replyText);
             } catch (Throwable t) {
                 String err = t.getMessage();
-                String baseUrl = openAi.baseUrl();
+                String baseUrl = openAiService.baseUrl();
                 return new AssistantReplyMessage(
                     "ERROR " + t.getClass().getSimpleName()
                         + (err == null || err.isBlank() ? "" : (": " + err))
@@ -534,7 +529,6 @@ public final class ChatConversationScreen implements Model {
             if (gap > 0) {
                 return shortcuts + " ".repeat(gap) + errorText;
             }
-            // Not enough room — show error only
             return TuiTheme.truncate(errorText, width);
         }
 
@@ -546,7 +540,6 @@ public final class ChatConversationScreen implements Model {
         String[] allLines = allHistory.isEmpty() ? new String[0] : allHistory.split("\n", -1);
 
         if (allLines.length == 0) {
-            // Show empty state
             List<String> empty = new ArrayList<>();
             Style emptyStyle = TuiTheme.hint();
             String emptyMsg = emptyStyle.render("Start a conversation...");
@@ -607,9 +600,20 @@ public final class ChatConversationScreen implements Model {
         int index = conversation.getMessages().size();
         conversation.addMessage(new ChatMessage(
             "m_%04d_%s".formatted(index + 1, UUID.randomUUID().toString().substring(0, 8)),
-            conversation.getId(), index, role, source, content == null ? "" : content,
-            OffsetDateTime.now(ZoneOffset.UTC), conversation.getDefaultModel(),
-            conversation.getProvider().name().toLowerCase(), null, null, null, null, null));
+            conversation.getId(),
+            index,
+            role,
+            source,
+            content == null ? "" : content,
+            OffsetDateTime.now(ZoneOffset.UTC),
+            conversation.getDefaultModel(),
+            conversation.getProvider().name().toLowerCase(),
+            null,
+            null,
+            null,
+            null,
+            null
+        ));
     }
 
     private Command maybePrintToScrollback(String label, String content) {
@@ -621,8 +625,6 @@ public final class ChatConversationScreen implements Model {
     }
 
     private static String highlightSelection(String plain, int width) {
-        // Use reverse-video so the selection is visible regardless of theme.
-        // Keep content plain (no ANSI) to avoid embedded resets breaking the highlight.
         String padded = TuiTheme.padRight(plain, width);
         return "\u001b[7m" + padded + "\u001b[0m";
     }
