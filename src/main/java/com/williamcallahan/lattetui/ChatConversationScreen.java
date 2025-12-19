@@ -8,7 +8,10 @@ import com.williamcallahan.lattetui.slash.ModelSlashCommand;
 import com.williamcallahan.lattetui.slash.SlashCommand;
 import com.williamcallahan.lattetui.slash.SlashCommands;
 import com.williamcallahan.lattetui.slash.WeatherSlashCommand;
+import com.williamcallahan.service.ChatCompletionService;
 import com.williamcallahan.service.OpenAiService;
+import com.williamcallahan.service.ToolExecutor;
+import com.williamcallahan.service.tools.WeatherForecastTool;
 import org.flatscrew.latte.Command;
 import org.flatscrew.latte.Message;
 import org.flatscrew.latte.Model;
@@ -52,7 +55,8 @@ public final class ChatConversationScreen implements Model {
     private final String userName;
     private final Config config;
 
-    private final OpenAiService openAiService = new OpenAiService();
+    private final OpenAiService openAi;
+    private final ToolExecutor toolExecutor;
     private final List<SlashCommand> slashCommands = SlashCommands.defaults();
     private final TextInput composer = new TextInput();
     private final SlashCommandPalette slashPalette = new SlashCommandPalette();
@@ -96,6 +100,9 @@ public final class ChatConversationScreen implements Model {
         this.mouseSelectionEnabled = "select".equalsIgnoreCase(resolveMouseMode());
         // Default OFF: tool JSON is usually noisy. Set BRIEF_SHOW_TOOLS=1 for debugging.
         this.showToolMessages = "1".equals(System.getenv("BRIEF_SHOW_TOOLS"));
+
+        this.openAi = new OpenAiService(config);
+        this.toolExecutor = new ToolExecutor(new ChatCompletionService(openAi), List.of(new WeatherForecastTool()));
 
         composer.setPrompt("> ");
         composer.setPlaceholder("Ask me anything...");
@@ -430,7 +437,7 @@ public final class ChatConversationScreen implements Model {
 
     private UpdateResult<? extends Model> openModelPalette() {
         try {
-            List<String> models = openAiService.modelChoices();
+            List<String> models = openAi.modelChoices();
             if (models.isEmpty()) {
                 return UpdateResult.from(this, () -> new ToolReplyMessage("No models available from API"));
             }
@@ -482,11 +489,11 @@ public final class ChatConversationScreen implements Model {
 
         return () -> {
             try {
-                String replyText = openAiService.respond(conversation, conversation.getDefaultModel());
+                String replyText = toolExecutor.respond(conversation, conversation.getDefaultModel());
                 return new AssistantReplyMessage(replyText);
             } catch (Throwable t) {
                 String err = t.getMessage();
-                String baseUrl = openAiService.baseUrl();
+                String baseUrl = openAi.baseUrl();
                 return new AssistantReplyMessage(
                     "ERROR " + t.getClass().getSimpleName()
                         + (err == null || err.isBlank() ? "" : (": " + err))
@@ -600,20 +607,9 @@ public final class ChatConversationScreen implements Model {
         int index = conversation.getMessages().size();
         conversation.addMessage(new ChatMessage(
             "m_%04d_%s".formatted(index + 1, UUID.randomUUID().toString().substring(0, 8)),
-            conversation.getId(),
-            index,
-            role,
-            source,
-            content == null ? "" : content,
-            OffsetDateTime.now(ZoneOffset.UTC),
-            conversation.getDefaultModel(),
-            conversation.getProvider().name().toLowerCase(),
-            null,
-            null,
-            null,
-            null,
-            null
-        ));
+            conversation.getId(), index, role, source, content == null ? "" : content,
+            OffsetDateTime.now(ZoneOffset.UTC), conversation.getDefaultModel(),
+            conversation.getProvider().name().toLowerCase(), null, null, null, null, null));
     }
 
     private Command maybePrintToScrollback(String label, String content) {

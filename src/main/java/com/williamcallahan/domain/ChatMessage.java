@@ -10,21 +10,15 @@ public record ChatMessage(
     @JsonProperty("id") String id,
     @JsonProperty("conversation_id") String conversationId,
     @JsonProperty("index") int index,
-
     @JsonProperty("role") Role role,
     @JsonProperty("source") Source source,
     @JsonProperty("content") String content,
-
     @JsonProperty("created_at") OffsetDateTime createdAt,
-
     @JsonProperty("model") String model,
     @JsonProperty("provider") String provider,
-
     @JsonProperty("provider_message_id") String providerMessageId,
-
     @JsonProperty("tool_calls") List<ToolCall> toolCalls,
     @JsonProperty("tool_call_id") String toolCallId,
-
     @JsonProperty("usage") Map<String, Object> usage,
     @JsonProperty("error") Map<String, Object> error
 ) {
@@ -33,6 +27,7 @@ public record ChatMessage(
         @JsonProperty("llm-output") LLM_OUTPUT,
         @JsonProperty("system") SYSTEM,
         @JsonProperty("tool-output") TOOL_OUTPUT,
-        @JsonProperty("internal") INTERNAL
+        @JsonProperty("internal") INTERNAL,
+        @JsonProperty("local") LOCAL
     }
 }
