@@ -13,11 +13,12 @@ application {
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://jitpack.io") }
     maven { url = uri("https://projectlombok.org/edge-releases") }
 }
 
 dependencies {
-    implementation("org.flatscrew:latte-tui:0.1.1")
+    implementation("com.github.WilliamAGH.latte-v2:latte-tui:main-SNAPSHOT")
     implementation("com.openai:openai-java:4.11.0")
     implementation(platform("com.fasterxml.jackson:jackson-bom:2.18.2"))
     implementation("com.fasterxml.jackson.core:jackson-databind")
