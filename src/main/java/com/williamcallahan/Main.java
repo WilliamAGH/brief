@@ -1,14 +1,9 @@
 package com.williamcallahan;
 
-import com.williamcallahan.domain.Conversation;
-import com.williamcallahan.lattetui.ChatConversationScreen;
+import com.williamcallahan.lattetui.ApiKeyPromptScreen;
 import com.williamcallahan.lattetui.WelcomeScreen;
 import org.flatscrew.latte.Model;
 import org.flatscrew.latte.Program;
-
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.UUID;
 
 /** Entry point for the brief TUI. */
 public class Main {
@@ -39,42 +34,47 @@ public class Main {
         // Set BRIEF_AUTOWRAP=1 to keep terminal default wrapping behavior.
         boolean disableAutoWrap = !"1".equals(System.getenv("BRIEF_AUTOWRAP"));
 
-        // Check config early to skip welcome screen if user name is already saved
-        Config config = new Config();
-        Model startScreen = selectStartScreen(config);
+        // Validate config before modifying terminal state - fail fast if config is broken
+        Config config;
+        Model startScreen;
+        try {
+            config = new Config();
+            startScreen = selectStartScreen(config);
+        } catch (ConfigException e) {
+            System.err.println(e.getMessage());
+            System.exit(1);
+            return; // unreachable but satisfies compiler
+        }
 
-        Program program = new Program(startScreen);
-        if (useAlt) {
-            program = program.withAltScreen(); // fresh screen, restores original on exit
-        }
-        if ("1".equals(mouseMode)) {
-            program = program.withMouseAllMotion();
-        }
+        // Terminal mode setup - only after config validation succeeds
+        boolean enableWheelOnlyMouse = "wheel".equalsIgnoreCase(mouseMode);
+        boolean enableSelectMouse = "select".equalsIgnoreCase(mouseMode);
 
         if (disableAutoWrap) {
             System.out.print(DISABLE_AUTOWRAP);
             System.out.flush();
         }
-        boolean enableWheelOnlyMouse = "wheel".equalsIgnoreCase(mouseMode);
-        boolean enableSelectMouse = "select".equalsIgnoreCase(mouseMode);
         if (enableWheelOnlyMouse) {
-            // Enable SGR mouse reporting (1006) + normal tracking (1000) for wheel events without all-motion tracking.
             System.out.print(ENABLE_MOUSE_SGR);
             System.out.print(ENABLE_MOUSE_NORMAL_TRACKING);
             System.out.flush();
         }
         if (enableSelectMouse) {
-            // Enable SGR reporting + button-event tracking (motion while a button is pressed) for drag-to-copy in-app.
             System.out.print(ENABLE_MOUSE_SGR);
             System.out.print(ENABLE_MOUSE_NORMAL_TRACKING);
             System.out.print(ENABLE_MOUSE_BUTTON_EVENT_TRACKING);
             System.out.flush();
         }
-        ConfigException configError = null;
+
         try {
+            Program program = new Program(startScreen);
+            if (useAlt) {
+                program = program.withAltScreen();
+            }
+            if ("1".equals(mouseMode)) {
+                program = program.withMouseAllMotion();
+            }
             program.run();
-        } catch (ConfigException e) {
-            configError = e;
         } finally {
             if (enableSelectMouse) {
                 System.out.print(DISABLE_MOUSE_BUTTON_EVENT_TRACKING);
@@ -92,45 +92,20 @@ public class Main {
                 System.out.flush();
             }
         }
-        if (configError != null) {
-            System.err.println(configError.getMessage());
-            System.exit(1);
-        }
     }
 
     /**
      * Decides which screen to start with based on saved config.
-     * If user name exists, skips WelcomeScreen and goes directly to chat.
+     * Chain: name prompt (if missing) → API key prompt (if missing) → chat.
      */
     private static Model selectStartScreen(Config config) {
         if (!config.hasUserName()) {
             return new WelcomeScreen(config);
         }
-
-        // User name exists - go directly to chat
-        String userName = config.userName();
-        Conversation.ConversationBuilder convoBuilder = Conversation.builder()
-            .id("c_" + UUID.randomUUID())
-            .createdAt(OffsetDateTime.now(ZoneOffset.UTC))
-            .updatedAt(OffsetDateTime.now(ZoneOffset.UTC));
-
-        // Priority: env var > saved config
-        String envModel = System.getenv("LLM_MODEL");
-        String model = null;
-        boolean needsModelSelection = false;
-
-        if (envModel != null && !envModel.isBlank()) {
-            model = envModel.trim();
-        } else if (config.hasModel()) {
-            model = config.model();
-        } else {
-            needsModelSelection = true;
+        if (!config.hasResolvedApiKey()) {
+            return new ApiKeyPromptScreen(config, config.userName(), 80, 24);
         }
-
-        if (model != null) {
-            convoBuilder.defaultModel(model);
-        }
-
-        return new ChatConversationScreen(userName, convoBuilder.build(), config, 80, 24, needsModelSelection);
+        // Both name and API key present - go directly to chat
+        return ApiKeyPromptScreen.transitionToChat(config, config.userName(), 80, 24).model();
     }
 }

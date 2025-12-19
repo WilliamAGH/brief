@@ -56,6 +56,28 @@ public final class Config {
         return m != null && !m.isBlank();
     }
 
+    public String apiKey() {
+        return props.getProperty("openai.api_key", "");
+    }
+
+    public void setApiKey(String key) {
+        props.setProperty("openai.api_key", key == null ? "" : key);
+        save();
+    }
+
+    /** Returns API key from env var (priority) or config file. Null if neither set. */
+    public String resolveApiKey() {
+        String envKey = System.getenv("OPENAI_API_KEY");
+        if (envKey != null) return envKey;
+        String configKey = apiKey();
+        return configKey.isEmpty() ? null : configKey;
+    }
+
+    /** True if API key is set via env var or config (empty string counts as set). */
+    public boolean hasResolvedApiKey() {
+        return System.getenv("OPENAI_API_KEY") != null || !apiKey().isEmpty();
+    }
+
     /** Returns transient error message if within display window, null otherwise. */
     public String transientError(long nowMs) {
         if (lastError == null) return null;
