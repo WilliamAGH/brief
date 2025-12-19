@@ -21,3 +21,27 @@
 - FMT1 Follow existing spacing, imports, and ordering; avoid style changes unrelated to the task.
 - TST1 Prefer fast, focused tests; keep tests aligned with the public contract.
 - DEP1 Remove unused imports, dependencies, and dead code.
+
+## Project-Specific
+
+### Architecture
+- Brief is a terminal chat client built on **Latte TUI** (https://github.com/WilliamAGH/latte-v2).
+- Uses The Elm Architecture: `Model` with `init()`, `update(Message)`, `view()`.
+
+### Upstream References
+When debugging TUI behavior or adding UI features:
+- **Latte TUI**: https://github.com/WilliamAGH/latte-v2 — Java port of Bubble Tea
+- **Bubble Tea** (Go): https://github.com/charmbracelet/bubbletea — original TUI framework
+- **Bubbles** (Go): https://github.com/charmbracelet/bubbles — component patterns
+- **Lip Gloss** (Go): https://github.com/charmbracelet/lipgloss — styling reference
+
+### Package Mapping (Latte)
+| Latte Package                    | Purpose                        |
+|----------------------------------|--------------------------------|
+| org.flatscrew.latte              | Program, Model, Message, Cmd   |
+| org.flatscrew.latte.spice.*      | Components (list, textinput)   |
+| org.flatscrew.latte.cream        | Styling, colors, borders       |
+
+### Dependencies
+- **Latte TUI** (io.github.williamagh:latte-tui): TUI framework
+- Check latte-v2 STATUS.md for available bubbles before building custom components.

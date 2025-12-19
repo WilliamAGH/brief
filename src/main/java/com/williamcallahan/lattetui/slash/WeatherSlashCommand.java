@@ -16,7 +16,7 @@ public final class WeatherSlashCommand {
 
         @Override
         public String description() {
-            return "Ask the assistant for weather (default: " + DEFAULT_CITY + ")";
+            return "Ask the assistant for weather";
         }
 
         @Override
