@@ -21,6 +21,7 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 tmp_latte_*
+tmp/
 .gradle-user-home/
 
 ### Eclipse ###

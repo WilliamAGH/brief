@@ -71,12 +71,16 @@ src/main/java/com/williamcallahan/
 │   ├── Role.java
 │   └── ToolCall.java
 ├── service/
+│   ├── ChatCompletionService.java
 │   ├── OpenAiService.java
+│   ├── ToolExecutor.java
 │   └── tools/
 │       ├── Tool.java
 │       └── WeatherForecastTool.java
 └── lattetui/
+    ├── ApiKeyPromptScreen.java
     ├── ChatConversationScreen.java
+    ├── ConfigPromptScreen.java
     ├── HistoryViewport.java
     ├── MouseSelectionController.java
     ├── SlashCommandPalette.java
