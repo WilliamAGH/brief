@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.williamcallahan"
-version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.0.2-SNAPSHOT"
+version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.1.1-SNAPSHOT"
 val tui4jLocalRequested = listOf(
     findProperty("tui4jLocal")?.toString(),
     System.getenv("TUI4J_LOCAL"),
@@ -16,12 +16,16 @@ val tui4jJlineVersion = "3.26.1"
 val tui4jIcuVersion = "76.1"
 val tui4jCommonsTextVersion = "1.13.0"
 val homeDir = System.getProperty("user.home")
-val tui4jLocalJarCandidates = listOf(
-    file("$homeDir/Developer/git/cursor/tui4j/build/libs/tui4j-${tui4jSnapshotVersion}.jar")
+// TUI4J_LOCAL_PATH env var allows explicit JAR path; otherwise check common locations
+val tui4jLocalPathOverride = System.getenv("TUI4J_LOCAL_PATH")?.let { file(it) }
+val tui4jLocalJarCandidates = listOfNotNull(
+    tui4jLocalPathOverride,
+    file("../tui4j/build/libs/tui4j-${tui4jSnapshotVersion}.jar"),
+    file("$homeDir/Developer/git/tui4j/build/libs/tui4j-${tui4jSnapshotVersion}.jar"),
 )
 val tui4jLocalJar = tui4jLocalJarCandidates.firstOrNull { it.exists() } ?: tui4jLocalJarCandidates.first()
 val tui4jLocalJarExists = tui4jLocalJarCandidates.any { it.exists() }
-// Prefer local snapshot for developer ergonomics, but never auto-enable it on CI/CD.
+// Auto-enable local JAR for developer ergonomics, but never on CI
 val tui4jLocalEnabled = tui4jLocalRequested || (!isCi && tui4jLocalJarExists)
 val tui4jVersion = if (tui4jLocalEnabled) tui4jSnapshotVersion else tui4jReleaseVersion
 
