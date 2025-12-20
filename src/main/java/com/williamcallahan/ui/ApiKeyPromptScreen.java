@@ -1,17 +1,17 @@
-package com.williamcallahan.lattetui;
+package com.williamcallahan.ui;
 
 import com.williamcallahan.Config;
 import com.williamcallahan.domain.Conversation;
-import org.flatscrew.latte.Command;
-import org.flatscrew.latte.Model;
-import org.flatscrew.latte.UpdateResult;
+import com.williamcallahan.tui4j.Command;
+import com.williamcallahan.tui4j.Model;
+import com.williamcallahan.tui4j.UpdateResult;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
-import static org.flatscrew.latte.Command.batch;
-import static org.flatscrew.latte.Command.setWidowTitle;
+import static com.williamcallahan.tui4j.Command.batch;
+import static com.williamcallahan.tui4j.Command.setWidowTitle;
 
 /** Prompts for OpenAI API key when missing from env and config. */
 public class ApiKeyPromptScreen extends ConfigPromptScreen {

@@ -1,10 +1,10 @@
-package com.williamcallahan.lattetui;
+package com.williamcallahan.ui;
 
-import org.flatscrew.latte.cream.Position;
-import org.flatscrew.latte.cream.Style;
-import org.flatscrew.latte.cream.color.Color;
-import org.flatscrew.latte.cream.color.TerminalColor;
-import org.flatscrew.latte.cream.join.VerticalJoinDecorator;
+import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Position;
+import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Style;
+import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.color.Color;
+import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.color.TerminalColor;
+import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.join.VerticalJoinDecorator;
 
 /**
  * Defines the visual theme and CRT-inspired color palette for the application.

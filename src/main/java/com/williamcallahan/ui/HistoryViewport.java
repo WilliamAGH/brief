@@ -1,4 +1,4 @@
-package com.williamcallahan.lattetui;
+package com.williamcallahan.ui;
 
 /**
  * Manages the scroll state and viewport window calculation for chat history.

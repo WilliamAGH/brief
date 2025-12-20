@@ -1,6 +1,6 @@
-package com.williamcallahan.lattetui;
+package com.williamcallahan.ui;
 
-import org.flatscrew.latte.cream.Style;
+import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Style;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -103,7 +103,8 @@ public final class PaletteOverlay {
             String padded = " ".repeat(leftPad) + line;
             overlayLines.add(TuiTheme.padRight(padded, innerWidth));
         }
-        return new Overlay(top, overlayLines);
+        Layout layout = new Layout(top, leftPad, boxWidth, innerBoxWidth, maxItems, scrollTop, total);
+        return new Overlay(top, overlayLines, layout);
     }
 
     /** Applies overlay lines onto the base screen buffer. */
@@ -116,5 +117,53 @@ public final class PaletteOverlay {
         }
     }
 
-    public record Overlay(int topRow, List<String> lines) {}
+    public record Overlay(int topRow, List<String> lines, Layout layout) {}
+
+    public record Layout(
+            int topRow,
+            int leftCol,
+            int boxWidth,
+            int innerBoxWidth,
+            int maxItems,
+            int scrollTop,
+            int totalItems
+    ) {
+        int boxHeight() {
+            return maxItems + 6;
+        }
+
+        int itemRowStart() {
+            return topRow + 3;
+        }
+
+        int visibleItemCount() {
+            if (totalItems <= 0 || scrollTop >= totalItems) {
+                return 0;
+            }
+            return Math.min(maxItems, totalItems - scrollTop);
+        }
+
+        boolean contains(int column, int row) {
+            return column >= leftCol
+                    && row >= topRow
+                    && column < leftCol + boxWidth
+                    && row < topRow + boxHeight();
+        }
+
+        int itemIndexAt(int column, int row) {
+            int itemTop = itemRowStart();
+            int itemBottom = itemTop + maxItems;
+            int innerLeft = leftCol + 1;
+            int innerRight = innerLeft + innerBoxWidth;
+            if (row < itemTop || row >= itemBottom) {
+                return -1;
+            }
+            if (column < innerLeft || column >= innerRight) {
+                return -1;
+            }
+            int visibleIndex = row - itemTop;
+            int index = scrollTop + visibleIndex;
+            return index < totalItems ? index : -1;
+        }
+    }
 }

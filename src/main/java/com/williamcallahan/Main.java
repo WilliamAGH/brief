@@ -1,9 +1,9 @@
 package com.williamcallahan;
 
-import com.williamcallahan.lattetui.ApiKeyPromptScreen;
-import com.williamcallahan.lattetui.WelcomeScreen;
-import org.flatscrew.latte.Model;
-import org.flatscrew.latte.Program;
+import com.williamcallahan.ui.ApiKeyPromptScreen;
+import com.williamcallahan.ui.WelcomeScreen;
+import com.williamcallahan.tui4j.Model;
+import com.williamcallahan.tui4j.Program;
 
 /** Entry point for the brief TUI. */
 public class Main {
@@ -24,7 +24,7 @@ public class Main {
         // Mouse behavior:
         // - unset: in-app drag-to-copy selection + wheel scroll (viewport-locked)
         // - 0: native terminal selection/copy (no in-app wheel scrolling)
-        // - 1: Latte mouse all-motion tracking (best wheel support; most terminals disable native selection)
+        // - 1: tui4j mouse all-motion tracking (best wheel support; most terminals disable native selection)
         // - wheel: wheel/click tracking only (often more compatible with native selection depending on terminal)
         // - select: wheel + drag tracking; app copies selected lines (native selection disabled)
         String mouseMode = System.getenv("BRIEF_MOUSE");
@@ -74,6 +74,9 @@ public class Main {
             }
             if ("1".equals(mouseMode) || "select".equals(mouseMode)) {
                 program = program.withMouseAllMotion();
+            }
+            if (!"0".equals(mouseMode)) {
+                program = program.withMouseClicks();
             }
             program.run();
         } finally {

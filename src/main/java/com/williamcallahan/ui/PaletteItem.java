@@ -1,4 +1,4 @@
-package com.williamcallahan.lattetui;
+package com.williamcallahan.ui;
 
 /** Item displayable in a selection palette. */
 public interface PaletteItem {

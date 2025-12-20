@@ -1,4 +1,4 @@
-package com.williamcallahan.lattetui.slash;
+package com.williamcallahan.ui.slash;
 
 import java.util.ArrayList;
 import java.util.List;

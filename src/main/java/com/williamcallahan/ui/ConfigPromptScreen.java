@@ -1,23 +1,23 @@
-package com.williamcallahan.lattetui;
+package com.williamcallahan.ui;
 
 import com.williamcallahan.Config;
-import org.flatscrew.latte.Command;
-import org.flatscrew.latte.Message;
-import org.flatscrew.latte.Model;
-import org.flatscrew.latte.UpdateResult;
-import org.flatscrew.latte.cream.Position;
-import org.flatscrew.latte.cream.Style;
-import org.flatscrew.latte.cream.border.StandardBorder;
-import org.flatscrew.latte.input.key.KeyAliases;
-import org.flatscrew.latte.input.key.KeyAliases.KeyAlias;
-import org.flatscrew.latte.input.key.KeyType;
-import org.flatscrew.latte.message.KeyPressMessage;
-import org.flatscrew.latte.message.QuitMessage;
-import org.flatscrew.latte.message.WindowSizeMessage;
-import org.flatscrew.latte.spice.textinput.TextInput;
+import com.williamcallahan.tui4j.Command;
+import com.williamcallahan.tui4j.Message;
+import com.williamcallahan.tui4j.Model;
+import com.williamcallahan.tui4j.UpdateResult;
+import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Position;
+import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Style;
+import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.border.StandardBorder;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
+import com.williamcallahan.tui4j.compat.bubbletea.message.KeyPressMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.message.QuitMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.message.WindowSizeMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.bubbles.textinput.TextInput;
 
-import static org.flatscrew.latte.Command.batch;
-import static org.flatscrew.latte.Command.setWidowTitle;
+import static com.williamcallahan.tui4j.Command.batch;
+import static com.williamcallahan.tui4j.Command.setWidowTitle;
 
 /**
  * Reusable config prompt screen with consistent CRT terminal styling.

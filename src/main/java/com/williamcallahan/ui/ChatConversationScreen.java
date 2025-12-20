@@ -1,51 +1,75 @@
-package com.williamcallahan.lattetui;
+package com.williamcallahan.ui;
 
 import com.williamcallahan.Config;
 import com.williamcallahan.domain.ChatMessage;
 import com.williamcallahan.domain.Conversation;
 import com.williamcallahan.domain.Role;
-import com.williamcallahan.lattetui.slash.ModelSlashCommand;
-import com.williamcallahan.lattetui.slash.SlashCommand;
-import com.williamcallahan.lattetui.slash.SlashCommands;
+import com.williamcallahan.ui.slash.ModelSlashCommand;
+import com.williamcallahan.ui.slash.SlashCommand;
+import com.williamcallahan.ui.slash.SlashCommands;
+import com.williamcallahan.ui.slash.WeatherSlashCommand;
 import com.williamcallahan.service.ChatCompletionService;
 import com.williamcallahan.service.OpenAiService;
 import com.williamcallahan.service.ToolExecutor;
 import com.williamcallahan.service.tools.WeatherForecastTool;
-import org.flatscrew.latte.Command;
-import org.flatscrew.latte.Message;
-import org.flatscrew.latte.Model;
-import org.flatscrew.latte.UpdateResult;
-import org.flatscrew.latte.ansi.TextWrapper;
-import org.flatscrew.latte.cream.Style;
-import org.flatscrew.latte.cream.border.StandardBorder;
-import org.flatscrew.latte.input.key.KeyAliases;
-import org.flatscrew.latte.input.key.KeyAliases.KeyAlias;
-import org.flatscrew.latte.input.key.KeyType;
-import org.flatscrew.latte.message.KeyPressMessage;
-import org.flatscrew.latte.message.QuitMessage;
-import org.flatscrew.latte.message.WindowSizeMessage;
-import org.flatscrew.latte.input.MouseButton;
-import org.flatscrew.latte.input.MouseMessage;
-import org.flatscrew.latte.spice.spinner.Spinner;
-import org.flatscrew.latte.spice.spinner.TickMessage;
-import org.flatscrew.latte.spice.spinner.SpinnerType;
-import org.flatscrew.latte.spice.textinput.TextInput;
+import com.williamcallahan.tui4j.Command;
+import com.williamcallahan.tui4j.Message;
+import com.williamcallahan.tui4j.Model;
+import com.williamcallahan.tui4j.UpdateResult;
+import com.williamcallahan.tui4j.ansi.TextWrapper;
+import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Style;
+import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.border.StandardBorder;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
+import com.williamcallahan.tui4j.compat.bubbletea.message.KeyPressMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.message.QuitMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.message.WindowSizeMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.input.MouseButton;
+import com.williamcallahan.tui4j.input.MouseClickMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.input.MouseMessage;
+import com.williamcallahan.tui4j.input.MouseTarget;
+import com.williamcallahan.tui4j.input.MouseTargetProvider;
+import com.williamcallahan.tui4j.compat.bubbletea.bubbles.spinner.Spinner;
+import com.williamcallahan.tui4j.compat.bubbletea.bubbles.spinner.TickMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.bubbles.spinner.SpinnerType;
+import com.williamcallahan.tui4j.compat.bubbletea.bubbles.textinput.TextInput;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 
-import static org.flatscrew.latte.Command.batch;
-import static org.flatscrew.latte.Command.setWidowTitle;
+import static com.williamcallahan.tui4j.Command.batch;
+import static com.williamcallahan.tui4j.Command.setWidowTitle;
 
 /**
  * Main chat interface providing a conversation view, input composer, and slash commands.
  * Implements a CRT-style green terminal aesthetic.
  */
-public final class ChatConversationScreen implements Model {
+public final class ChatConversationScreen implements Model, MouseTargetProvider {
+
+    private record SlashLlmOverride(
+        Function<String, String> userText,
+        Function<String, String> systemPrompt
+    ) {
+        String userTextFor(String input) {
+            return userText == null ? input : userText.apply(input);
+        }
+
+        String systemPromptFor(String input) {
+            return systemPrompt == null ? null : systemPrompt.apply(input);
+        }
+    }
+
+    private static final Map<String, SlashLlmOverride> SLASH_LLM_OVERRIDES = Map.of(
+        "/weather",
+        new SlashLlmOverride(WeatherSlashCommand::toUserRequest, WeatherSlashCommand::toLlmPrompt)
+    );
 
     private record AssistantReplyMessage(String text) implements Message {}
     private record LocalDisplayMessage(String text) implements Message {}
@@ -75,6 +99,11 @@ public final class ChatConversationScreen implements Model {
     private boolean waiting = false;
     private final HistoryViewport historyViewport = new HistoryViewport();
     private final MouseSelectionController mouseSelection = new MouseSelectionController();
+    private List<MouseTarget> mouseTargets = List.of();
+    private PaletteOverlay.Layout slashOverlayLayout;
+    private PaletteOverlay.Layout modelOverlayLayout;
+    private int innerLeft = 0;
+    private int innerTop = 0;
 
     private long lastEnterAtMs = 0L;
     private String lastEnterText = null;
@@ -102,6 +131,11 @@ public final class ChatConversationScreen implements Model {
         composer.setCharLimit(4000);
         composer.setWidth(this.width - 6);
         composer.focus();
+    }
+
+    @Override
+    public List<MouseTarget> mouseTargets() {
+        return mouseTargets;
     }
 
     private static String resolveMouseMode() {
@@ -148,6 +182,13 @@ public final class ChatConversationScreen implements Model {
             Command cmd = mouseSelection.handle(mouse);
             if (cmd != null) return UpdateResult.from(this, cmd);
             if (mouseSelection.isSelecting()) return UpdateResult.from(this);
+        }
+
+        if (msg instanceof MouseClickMessage click) {
+            UpdateResult<? extends Model> clickResult = handleMouseClick(click);
+            if (clickResult != null) {
+                return clickResult;
+            }
         }
 
         if (msg instanceof TickMessage) {
@@ -207,8 +248,8 @@ public final class ChatConversationScreen implements Model {
             if (slashPalette.isOpen() || (!waiting && key.type() == KeyType.KeyRunes)) {
                 SlashCommandPalette.PaletteUpdate pu = slashPalette.update(key, msg, composer, waiting, slashCommands);
                 if (pu.handled()) {
-                    if (pu.submitText() != null) return submitUserText(pu.submitText());
-                    return UpdateResult.from(this, pu.command());
+                    UpdateResult<? extends Model> result = handleSlashPaletteUpdate(pu);
+                    if (result != null) return result;
                 }
             }
 
@@ -267,6 +308,73 @@ public final class ChatConversationScreen implements Model {
         return UpdateResult.from(this, inputUpdate.command());
     }
 
+    private UpdateResult<? extends Model> handleMouseClick(MouseClickMessage click) {
+        if (click.button() != MouseButton.MouseButtonLeft) {
+            return null;
+        }
+        if (mouseSelectionEnabled && mouseSelection.isSelecting()) {
+            return UpdateResult.from(this);
+        }
+
+        int column = click.column() - innerLeft;
+        int row = click.row() - innerTop;
+
+        if (modelPalette.isOpen() && modelOverlayLayout != null) {
+            if (!modelOverlayLayout.contains(column, row)) {
+                modelPalette.close();
+                return UpdateResult.from(this);
+            }
+            int index = modelOverlayLayout.itemIndexAt(column, row);
+            if (index >= 0) {
+                ModelPalette.PaletteResult result = modelPalette.click(index);
+                if (result.handled() && result.selectedModel() != null) {
+                    conversation.setDefaultModel(result.selectedModel());
+                    config.setModel(result.selectedModel());
+                }
+                return UpdateResult.from(this);
+            }
+            return UpdateResult.from(this);
+        }
+
+        if (slashPalette.isOpen() && slashOverlayLayout != null) {
+            if (!slashOverlayLayout.contains(column, row)) {
+                slashPalette.close();
+                return UpdateResult.from(this);
+            }
+            int index = slashOverlayLayout.itemIndexAt(column, row);
+            if (index >= 0) {
+                SlashCommandPalette.PaletteUpdate pu = slashPalette.click(index, composer, slashCommands);
+                return handleSlashPaletteUpdate(pu);
+            }
+            return UpdateResult.from(this);
+        }
+
+        MouseTarget target = click.target();
+        if (target == null) {
+            return null;
+        }
+
+        if ("toolbar.commands".equals(target.id())) {
+            if (!waiting) {
+                slashPalette.openFromMouse(composer, slashCommands);
+                return UpdateResult.from(this);
+            }
+            return UpdateResult.from(this);
+        }
+
+        if (target.hyperlink() != null) {
+            return UpdateResult.from(this, Command.openUrl(target.hyperlink()));
+        }
+
+        return null;
+    }
+
+    private UpdateResult<? extends Model> handleSlashPaletteUpdate(SlashCommandPalette.PaletteUpdate pu) {
+        if (pu == null || !pu.handled()) return null;
+        if (pu.submitText() != null) return submitUserText(pu.submitText());
+        return UpdateResult.from(this, pu.command());
+    }
+
     @Override
     public String view() {
         int viewportWidth = Math.max(40, width);
@@ -283,6 +391,9 @@ public final class ChatConversationScreen implements Model {
 
         int innerWidth = Math.max(20, viewportWidth - frame.getHorizontalFrameSize());
         int innerHeight = Math.max(4, viewportHeight - frame.getVerticalFrameSize());
+
+        innerLeft = frame.getBorderLeftSize() + frame.leftPadding();
+        innerTop = frame.getBorderTopSize();
 
         String header = renderHeader(innerWidth);
 
@@ -362,9 +473,16 @@ public final class ChatConversationScreen implements Model {
         }
 
         lines.add(TuiTheme.padRight(statusRow, innerWidth));
+        int statusRowIndex = lines.size() - 1;
 
-        slashPalette.applyOverlay(lines, innerWidth, innerHeight, dividerRow, slashCommands, composer.value());
-        modelPalette.applyOverlay(lines, innerWidth, innerHeight, dividerRow);
+        PaletteOverlay.Overlay slashOverlay = slashPalette.applyOverlay(
+            lines, innerWidth, innerHeight, dividerRow, slashCommands, composer.value()
+        );
+        PaletteOverlay.Overlay modelOverlay = modelPalette.applyOverlay(lines, innerWidth, innerHeight, dividerRow);
+        slashOverlayLayout = (slashOverlay == null) ? null : slashOverlay.layout();
+        modelOverlayLayout = (modelOverlay == null) ? null : modelOverlay.layout();
+
+        mouseTargets = buildMouseTargets(statusRow, statusRowIndex, slashOverlay, modelOverlay);
 
         while (lines.size() < innerHeight) {
             lines.add(" ".repeat(innerWidth));
@@ -375,6 +493,42 @@ public final class ChatConversationScreen implements Model {
 
         String content = String.join("\n", lines);
         return frame.render(content);
+    }
+
+    private List<MouseTarget> buildMouseTargets(
+            String statusRow,
+            int statusRowIndex,
+            PaletteOverlay.Overlay slashOverlay,
+            PaletteOverlay.Overlay modelOverlay
+    ) {
+        List<MouseTarget> targets = new ArrayList<>();
+        addToolbarTargets(statusRow, statusRowIndex, targets);
+        addOverlayTargets("slash", slashOverlay, targets);
+        addOverlayTargets("model", modelOverlay, targets);
+        return targets;
+    }
+
+    private void addToolbarTargets(String statusRow, int statusRowIndex, List<MouseTarget> targets) {
+        String plain = TuiTheme.stripAnsi(statusRow);
+        int commandsIndex = plain.indexOf("commands");
+        if (commandsIndex < 0) return;
+        int row = innerTop + statusRowIndex;
+        int col = innerLeft + commandsIndex;
+        targets.add(MouseTarget.click("toolbar.commands", col, row, "commands".length(), 1));
+    }
+
+    private void addOverlayTargets(String prefix, PaletteOverlay.Overlay overlay, List<MouseTarget> targets) {
+        if (overlay == null || overlay.layout() == null) return;
+        PaletteOverlay.Layout layout = overlay.layout();
+        int visibleCount = layout.visibleItemCount();
+        int itemStartRow = innerTop + layout.itemRowStart();
+        int itemStartCol = innerLeft + layout.leftCol() + 1;
+        int itemWidth = layout.innerBoxWidth();
+        for (int i = 0; i < visibleCount; i++) {
+            int index = layout.scrollTop() + i;
+            int row = itemStartRow + i;
+            targets.add(MouseTarget.click(prefix + ".item." + index, itemStartCol, row, itemWidth, 1));
+        }
     }
 
     private UpdateResult<? extends Model> submitUserText(String text) {
@@ -389,6 +543,11 @@ public final class ChatConversationScreen implements Model {
             if (sc instanceof ModelSlashCommand) {
                 composer.reset();
                 return openModelPalette();
+            }
+
+            SlashLlmOverride override = (sc == null) ? null : SLASH_LLM_OVERRIDES.get(sc.name());
+            if (override != null) {
+                return submitToLlmDetached(text, override.userTextFor(text), override.systemPromptFor(text));
             }
 
             if (sc != null && ("/clear".equals(sc.name()) || "/new".equals(sc.name()))) {
@@ -414,15 +573,7 @@ public final class ChatConversationScreen implements Model {
             return UpdateResult.from(this, batch(printUser, call, spinner.init()));
         }
 
-        append(Role.USER, ChatMessage.Source.USER_INPUT, text);
-        composer.reset();
-        waiting = true;
-        historyViewport.follow();
-        spinner = new Spinner(SpinnerType.DOT);
-
-        Command call = slashOrChatCall(text);
-        Command printUser = maybePrintToScrollback(userName, text);
-        return UpdateResult.from(this, batch(printUser, call, spinner.init()));
+        return submitToLlm(text, null);
     }
 
     private UpdateResult<? extends Model> openModelPalette() {
@@ -477,6 +628,43 @@ public final class ChatConversationScreen implements Model {
             };
         }
 
+        return llmCall();
+    }
+
+    private UpdateResult<? extends Model> submitToLlm(String text, String internalSystemPrompt) {
+        append(Role.USER, ChatMessage.Source.USER_INPUT, text);
+        appendInternalSystemPrompt(internalSystemPrompt);
+        composer.reset();
+        waiting = true;
+        historyViewport.follow();
+        spinner = new Spinner(SpinnerType.DOT);
+
+        Command call = llmCall();
+        Command printUser = maybePrintToScrollback(userName, text);
+        return UpdateResult.from(this, batch(printUser, call, spinner.init()));
+    }
+
+    private UpdateResult<? extends Model> submitToLlmDetached(String displayText, String llmUserText, String internalSystemPrompt) {
+        append(Role.USER, ChatMessage.Source.LOCAL, displayText);
+        appendInternalSystemPrompt(internalSystemPrompt);
+        String userText = (llmUserText == null || llmUserText.isBlank()) ? displayText : llmUserText;
+        append(Role.USER, ChatMessage.Source.INTERNAL, userText);
+        composer.reset();
+        waiting = true;
+        historyViewport.follow();
+        spinner = new Spinner(SpinnerType.DOT);
+
+        Command call = llmCall();
+        Command printUser = maybePrintToScrollback(userName, displayText);
+        return UpdateResult.from(this, batch(printUser, call, spinner.init()));
+    }
+
+    private void appendInternalSystemPrompt(String internalSystemPrompt) {
+        if (internalSystemPrompt == null || internalSystemPrompt.isBlank()) return;
+        append(Role.SYSTEM, ChatMessage.Source.INTERNAL, internalSystemPrompt);
+    }
+
+    private Command llmCall() {
         return () -> {
             try {
                 String replyText = toolExecutor.respond(conversation, conversation.getDefaultModel());
@@ -616,9 +804,17 @@ public final class ChatConversationScreen implements Model {
         out.append(label).append("\n");
 
         String content = (m.content() == null) ? "" : m.content();
-        String wrapped = new TextWrapper().wrap(content, Math.max(10, wrapWidth));
-        for (String line : wrapped.split("\n", -1)) {
-            out.append(line).append("\n");
+        if (m.role() == Role.ASSISTANT && content.isBlank() && m.toolCalls() != null && !m.toolCalls().isEmpty()) {
+            String toolName = m.toolCalls().getFirst().name();
+            String banner = ToolCallBanner.render(toolName, wrapWidth);
+            for (String line : banner.split("\n", -1)) {
+                out.append(line).append("\n");
+            }
+        } else {
+            String wrapped = new TextWrapper().wrap(content, Math.max(10, wrapWidth));
+            for (String line : wrapped.split("\n", -1)) {
+                out.append(line).append("\n");
+            }
         }
         out.append("\n");
 

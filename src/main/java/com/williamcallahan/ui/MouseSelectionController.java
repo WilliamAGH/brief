@@ -1,9 +1,9 @@
-package com.williamcallahan.lattetui;
+package com.williamcallahan.ui;
 
-import org.flatscrew.latte.Command;
-import org.flatscrew.latte.input.MouseAction;
-import org.flatscrew.latte.input.MouseButton;
-import org.flatscrew.latte.input.MouseMessage;
+import com.williamcallahan.tui4j.Command;
+import com.williamcallahan.tui4j.compat.bubbletea.input.MouseAction;
+import com.williamcallahan.tui4j.compat.bubbletea.input.MouseButton;
+import com.williamcallahan.tui4j.compat.bubbletea.input.MouseMessage;
 
 import java.util.ArrayList;
 import java.util.List;
