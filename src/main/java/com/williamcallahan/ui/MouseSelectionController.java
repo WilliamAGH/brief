@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
  */
 final class MouseSelectionController {
     private static final Pattern URL_PATTERN = Pattern.compile(
-        "^(https?://|www\\.)[a-zA-Z0-0+&@#/%?=~_|!:,.;]*[a-zA-Z0-0+&@#/%=~_|]$"
+        "^(https?://|www\\.)[a-zA-Z0-9+&@#/%?=~_|!:,.;]*[a-zA-Z0-9+&@#/%=~_|]$"
     );
 
     private boolean selecting = false;
