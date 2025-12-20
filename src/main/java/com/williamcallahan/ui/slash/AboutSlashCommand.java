@@ -1,5 +1,7 @@
 package com.williamcallahan.ui.slash;
 
+import com.williamcallahan.AppInfo;
+
 /** /about output. */
 public final class AboutSlashCommand {
     private AboutSlashCommand() {}
@@ -31,16 +33,17 @@ public final class AboutSlashCommand {
             return """
 
             *About the App*:
+            Version: %s
             Message: Made with  ❤️  by William Callahan in San Francisco
 
             GitHub Repo: https://github.com/WilliamAGH/brief
 
             *About the Author*:
-            Website: williamcallahan.com
+            Website: https://williamcallahan.com
             Email: william@williamcallahan.com
             Twitter: https://x.com/WilliamCallahan
             LinkedIn: https://www.linkedin.com/in/williamacallahan/
-            """.trim();
+            """.formatted(AppInfo.VERSION).trim();
         }
     }
 }

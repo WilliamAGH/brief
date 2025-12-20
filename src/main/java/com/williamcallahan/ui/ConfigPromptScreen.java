@@ -1,5 +1,6 @@
 package com.williamcallahan.ui;
 
+import com.williamcallahan.AppInfo;
 import com.williamcallahan.Config;
 import com.williamcallahan.tui4j.Command;
 import com.williamcallahan.tui4j.Message;
@@ -24,9 +25,6 @@ import static com.williamcallahan.tui4j.Command.setWidowTitle;
  * Subclasses provide title, placeholder, and transition logic.
  */
 public abstract class ConfigPromptScreen implements Model {
-
-    private static final String APP_NAME = "brief";
-    private static final String VERSION = "v0.1";
 
     protected final Config config;
     protected final TextInput textInput;
@@ -54,7 +52,7 @@ public abstract class ConfigPromptScreen implements Model {
 
     @Override
     public Command init() {
-        return batch(setWidowTitle(APP_NAME + " " + VERSION), Command.checkWindowSize());
+        return batch(setWidowTitle(AppInfo.NAME + " " + AppInfo.VERSION), Command.checkWindowSize());
     }
 
     @Override
@@ -85,7 +83,7 @@ public abstract class ConfigPromptScreen implements Model {
 
         Style titleStyle = TuiTheme.brandTitle();
         Style versionStyle = Style.newStyle().foreground(TuiTheme.MUTED);
-        String headerLine = titleStyle.render(APP_NAME) + " " + versionStyle.render(VERSION);
+        String headerLine = titleStyle.render(AppInfo.NAME) + " " + versionStyle.render(AppInfo.VERSION);
 
         Style welcomeStyle = Style.newStyle().foreground(TuiTheme.LIGHT).bold(true);
         Style bodyStyle = Style.newStyle().foreground(TuiTheme.MUTED);
