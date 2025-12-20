@@ -1,6 +1,6 @@
 # Brief
 
-Brief is a terminal UI app built with [Latte TUI](https://github.com/flatscrew/latte).
+Brief is a terminal UI app built with [tui4j](https://github.com/williamcallahan/tui4j).
 
 Canonical repo: https://github.com/WilliamAGH/brief
 
@@ -12,7 +12,7 @@ Brief is a terminal-first chat client with a slash-command palette, local tool e
 
 ## Inspiration
 
-Brief is a showcase of what's possible in modern Java in 2026, and the interface library used (Latte) is a Java port of the popular Go library called [BubbleTea](https://github.com/charmbracelet/bubbletea) from [Charm](https://charm.land/).
+Brief is a showcase of what's possible in modern Java in 2026, and the interface library used (tui4j) is a Java port of the popular Go library called [BubbleTea](https://github.com/charmbracelet/bubbletea) from [Charm](https://charm.land/).
 
 ## Installation
 
@@ -80,7 +80,7 @@ src/main/java/com/williamcallahan/
 │   └── tools/
 │       ├── Tool.java
 │       └── WeatherForecastTool.java
-└── lattetui/
+└── ui/
     ├── ApiKeyPromptScreen.java
     ├── ChatConversationScreen.java
     ├── ConfigPromptScreen.java

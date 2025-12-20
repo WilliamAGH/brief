@@ -17,7 +17,7 @@ This reflects what is currently in the codebase.
 
 ## Dependencies
 
-- latte-tui
+- tui4j
 - openai-java
 
 ## Persistence
