@@ -18,6 +18,12 @@ Brief is a showcase of what's possible in modern Java in 2026, and the interface
 
 ### Homebrew (macOS)
 
+[Homebrew](https://brew.sh/) (package manager)
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
 ```bash
 brew install williamagh/tap/brief
 ```
