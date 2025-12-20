@@ -140,10 +140,15 @@ public final class ToolExecutor {
         String content = contentOrEmpty(m);
         switch (m.role()) {
             case SYSTEM -> { if (!content.isBlank()) b.addSystemMessage(content); }
-            case USER -> { if (m.source() == ChatMessage.Source.USER_INPUT && !content.isBlank()) b.addUserMessage(content); }
+            case USER -> { if (shouldIncludeUserMessage(m, content)) b.addUserMessage(content); }
             case ASSISTANT -> appendAssistantMessage(b, m, content);
             case TOOL -> appendToolMessage(b, m, content);
         }
+    }
+
+    static boolean shouldIncludeUserMessage(ChatMessage m, String content) {
+        if (content == null || content.isBlank()) return false;
+        return m.source() == ChatMessage.Source.USER_INPUT || m.source() == ChatMessage.Source.INTERNAL;
     }
 
     private void appendAssistantMessage(ChatCompletionCreateParams.Builder b, ChatMessage m, String content) {
