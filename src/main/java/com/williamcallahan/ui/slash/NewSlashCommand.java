@@ -1,17 +1,17 @@
-package com.williamcallahan.lattetui.slash;
+package com.williamcallahan.ui.slash;
 
-public final class ClearSlashCommand {
-    private ClearSlashCommand() {}
+public final class NewSlashCommand {
+    private NewSlashCommand() {}
 
     public static final class Command implements SlashCommand {
         @Override
         public String name() {
-            return "/clear";
+            return "/new";
         }
 
         @Override
         public String description() {
-            return "Clear chat and start a new session";
+            return "Start a new chat session (new conversation id)";
         }
 
         @Override

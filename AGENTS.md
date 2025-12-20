@@ -21,3 +21,27 @@
 - FMT1 Follow existing spacing, imports, and ordering; avoid style changes unrelated to the task.
 - TST1 Prefer fast, focused tests; keep tests aligned with the public contract.
 - DEP1 Remove unused imports, dependencies, and dead code.
+
+## Project-Specific
+
+### Architecture
+- Brief is a terminal chat client built on **tui4j** (https://github.com/williamcallahan/tui4j).
+- Uses The Elm Architecture: `Model` with `init()`, `update(Message)`, `view()`.
+
+### Upstream References
+When debugging TUI behavior or adding UI features:
+- **tui4j**: https://github.com/williamcallahan/tui4j — Java port of Bubble Tea
+- **Bubble Tea** (Go): https://github.com/charmbracelet/bubbletea — original TUI framework
+- **Bubbles** (Go): https://github.com/charmbracelet/bubbles — component patterns
+- **Lip Gloss** (Go): https://github.com/charmbracelet/lipgloss — styling reference
+
+### Package Mapping (tui4j)
+| tui4j Package                                  | Purpose                        |
+|-----------------------------------------------|--------------------------------|
+| com.williamcallahan.tui4j                      | Program, Model, Message, Cmd   |
+| com.williamcallahan.tui4j.compat.bubbletea.bubbles.* | Components (list, textinput)   |
+| com.williamcallahan.tui4j.compat.bubbletea.lipgloss   | Styling, colors, borders       |
+
+### Dependencies
+- **tui4j** (com.williamcallahan:tui4j): TUI framework
+- Check tui4j STATUS.md for available bubbles before building custom components.

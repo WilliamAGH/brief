@@ -1,10 +1,18 @@
-.PHONY: run build clean dist release-test release
+.PHONY: run run-local-tui build clean dist local-tui release-test release
 
 run: build
 	@set -a; [ -f .env ] && . ./.env; set +a; ./build/install/brief/bin/brief
 
+run-local-tui:
+	@cd ../tui4j && ./gradlew jar
+	@TUI4J_LOCAL=true $(MAKE) run
+
 build:
 	@JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew installDist -q 2>&1 | grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true
+
+local-tui:
+	@cd ../tui4j && ./gradlew jar
+	@TUI4J_LOCAL=true ./gradlew test
 
 clean:
 	@./gradlew clean 2>/dev/null

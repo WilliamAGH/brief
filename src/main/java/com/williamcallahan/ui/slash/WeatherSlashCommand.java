@@ -1,4 +1,4 @@
-package com.williamcallahan.lattetui.slash;
+package com.williamcallahan.ui.slash;
 
 import java.util.List;
 
@@ -16,7 +16,7 @@ public final class WeatherSlashCommand {
 
         @Override
         public String description() {
-            return "Ask the assistant for weather (default: " + DEFAULT_CITY + ")";
+            return "Ask the assistant for weather";
         }
 
         @Override
@@ -41,6 +41,8 @@ public final class WeatherSlashCommand {
         sb.append("Location input: \"").append(location).append("\".\n");
         sb.append("Get current weather + a 5-day forecast.\n");
         sb.append("Use the get_weather_forecast tool.\n");
+        sb.append("When summarizing results, use the plain-language condition text.\n");
+        sb.append("Do not mention numeric condition codes.\n");
         sb.append("When calling the tool:\n");
         sb.append("- Put only the place name in city (no comma qualifiers).\n");
         sb.append("- Put disambiguation into country_code/admin1/admin2 when available (e.g. US + California).\n");

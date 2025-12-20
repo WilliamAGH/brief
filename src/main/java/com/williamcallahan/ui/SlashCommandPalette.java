@@ -1,15 +1,15 @@
-package com.williamcallahan.lattetui;
+package com.williamcallahan.ui;
 
-import com.williamcallahan.lattetui.slash.SlashCommand;
-import com.williamcallahan.lattetui.slash.SlashCommands;
-import org.flatscrew.latte.Command;
-import org.flatscrew.latte.Message;
-import org.flatscrew.latte.UpdateResult;
-import org.flatscrew.latte.input.key.KeyAliases;
-import org.flatscrew.latte.input.key.KeyAliases.KeyAlias;
-import org.flatscrew.latte.input.key.KeyType;
-import org.flatscrew.latte.message.KeyPressMessage;
-import org.flatscrew.latte.spice.textinput.TextInput;
+import com.williamcallahan.ui.slash.SlashCommand;
+import com.williamcallahan.ui.slash.SlashCommands;
+import com.williamcallahan.tui4j.Command;
+import com.williamcallahan.tui4j.Message;
+import com.williamcallahan.tui4j.UpdateResult;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
+import com.williamcallahan.tui4j.compat.bubbletea.message.KeyPressMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.bubbles.textinput.TextInput;
 
 import java.util.List;
 
@@ -29,12 +29,21 @@ final class SlashCommandPalette {
         selectedIndex = 0;
     }
 
+    PaletteUpdate openFromMouse(TextInput composer, List<SlashCommand> commands) {
+        if (open) return new PaletteUpdate(true, null, null);
+        composer.setValue("/");
+        composer.cursorEnd();
+        updateFromComposer(composer);
+        clampSelection(SlashCommands.filterForComposer(commands, composer.value()).size());
+        return new PaletteUpdate(true, null, null);
+    }
+
     PaletteUpdate update(KeyPressMessage key, Message rawMsg, TextInput composer, boolean waiting, List<SlashCommand> commands) {
         if (waiting) return new PaletteUpdate(false, null, null);
 
         if (!open) {
             if (!isSlashTrigger(key)) return new PaletteUpdate(false, null, null);
-            UpdateResult<? extends org.flatscrew.latte.Model> inputUpdate = composer.update(rawMsg);
+            UpdateResult<? extends com.williamcallahan.tui4j.Model> inputUpdate = composer.update(rawMsg);
             updateFromComposer(composer);
             clampSelection(SlashCommands.filterForComposer(commands, composer.value()).size());
             return new PaletteUpdate(true, inputUpdate.command(), null);
@@ -83,11 +92,28 @@ final class SlashCommandPalette {
             return submit.isEmpty() ? new PaletteUpdate(true, null, null) : new PaletteUpdate(true, null, submit);
         }
 
-        UpdateResult<? extends org.flatscrew.latte.Model> inputUpdate = composer.update(rawMsg);
+        UpdateResult<? extends com.williamcallahan.tui4j.Model> inputUpdate = composer.update(rawMsg);
         updateFromComposer(composer);
         matches = SlashCommands.filterForComposer(commands, composer.value());
         clampSelection(matches.size());
         return new PaletteUpdate(true, inputUpdate.command(), null);
+    }
+
+    PaletteUpdate click(int index, TextInput composer, List<SlashCommand> commands) {
+        if (!open) return new PaletteUpdate(false, null, null);
+
+        List<SlashCommand> matches = SlashCommands.filterForComposer(commands, composer.value());
+        clampSelection(matches.size());
+        if (matches.isEmpty()) {
+            close();
+            return new PaletteUpdate(true, null, null);
+        }
+        selectedIndex = Math.max(0, Math.min(index, matches.size() - 1));
+        String submit = matches.get(selectedIndex).name();
+        close();
+        return (submit == null || submit.isBlank())
+            ? new PaletteUpdate(true, null, null)
+            : new PaletteUpdate(true, null, submit);
     }
 
     private void updateFromComposer(TextInput composer) {
@@ -141,11 +167,13 @@ final class SlashCommandPalette {
         composer.cursorEnd();
     }
 
-    void applyOverlay(List<String> baseLines, int innerWidth, int innerHeight, int dividerRow, List<SlashCommand> commands, String composerValue) {
-        if (!open) return;
+    PaletteOverlay.Overlay applyOverlay(List<String> baseLines, int innerWidth, int innerHeight, int dividerRow,
+                                        List<SlashCommand> commands, String composerValue) {
+        if (!open) return null;
         List<SlashCommand> matches = SlashCommands.filterForComposer(commands, composerValue);
         PaletteOverlay.Overlay overlay = PaletteOverlay.render(matches, selectedIndex, "Slash Commands", null, innerWidth, innerHeight, dividerRow);
         PaletteOverlay.apply(overlay, baseLines);
+        return overlay;
     }
 
     private static String safeTrim(String s) {

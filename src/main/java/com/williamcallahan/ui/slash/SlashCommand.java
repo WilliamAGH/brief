@@ -1,6 +1,6 @@
-package com.williamcallahan.lattetui.slash;
+package com.williamcallahan.ui.slash;
 
-import com.williamcallahan.lattetui.PaletteItem;
+import com.williamcallahan.ui.PaletteItem;
 
 /** Contract for a slash command that can run locally. */
 public interface SlashCommand extends PaletteItem {

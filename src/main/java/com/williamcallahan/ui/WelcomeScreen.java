@@ -1,9 +1,9 @@
-package com.williamcallahan.lattetui;
+package com.williamcallahan.ui;
 
 import com.williamcallahan.Config;
-import org.flatscrew.latte.Model;
-import org.flatscrew.latte.Program;
-import org.flatscrew.latte.UpdateResult;
+import com.williamcallahan.tui4j.Model;
+import com.williamcallahan.tui4j.Program;
+import com.williamcallahan.tui4j.UpdateResult;
 
 /** Welcome screen prompting for user name. */
 public class WelcomeScreen extends ConfigPromptScreen {

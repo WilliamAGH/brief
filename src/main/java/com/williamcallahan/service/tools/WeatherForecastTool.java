@@ -30,6 +30,40 @@ public final class WeatherForecastTool implements Tool {
         .connectTimeout(Duration.ofSeconds(10))
         .build();
     private static final int GEOCODE_CANDIDATES = 20;
+    /**
+     * WMO Weather Interpretation Codes (WW).
+     * @see <a href="https://open-meteo.com/en/docs">Open-Meteo API docs</a>
+     */
+    private static final Map<Integer, String> WMO_WEATHER_CODES = Map.ofEntries(
+        Map.entry(0, "Clear sky"),
+        Map.entry(1, "Mainly clear"),
+        Map.entry(2, "Partly cloudy"),
+        Map.entry(3, "Overcast"),
+        Map.entry(45, "Fog"),
+        Map.entry(48, "Depositing rime fog"),
+        Map.entry(51, "Drizzle (light)"),
+        Map.entry(53, "Drizzle (moderate)"),
+        Map.entry(55, "Drizzle (dense)"),
+        Map.entry(56, "Freezing drizzle (light)"),
+        Map.entry(57, "Freezing drizzle (dense)"),
+        Map.entry(61, "Rain (slight)"),
+        Map.entry(63, "Rain (moderate)"),
+        Map.entry(65, "Rain (heavy)"),
+        Map.entry(66, "Freezing rain (light)"),
+        Map.entry(67, "Freezing rain (heavy)"),
+        Map.entry(71, "Snow fall (slight)"),
+        Map.entry(73, "Snow fall (moderate)"),
+        Map.entry(75, "Snow fall (heavy)"),
+        Map.entry(77, "Snow grains"),
+        Map.entry(80, "Rain showers (slight)"),
+        Map.entry(81, "Rain showers (moderate)"),
+        Map.entry(82, "Rain showers (violent)"),
+        Map.entry(85, "Snow showers (slight)"),
+        Map.entry(86, "Snow showers (heavy)"),
+        Map.entry(95, "Thunderstorm (slight or moderate)"),
+        Map.entry(96, "Thunderstorm with hail (slight)"),
+        Map.entry(99, "Thunderstorm with hail (heavy)")
+    );
 
     @Override
     public String name() {
@@ -87,7 +121,8 @@ public final class WeatherForecastTool implements Tool {
         current.put("location", geo.name + ", " + geo.country);
         current.put("temp_F", cw.path("temperature").asDouble());
         current.put("wind_mph", Math.round(cw.path("windspeed").asDouble() / 1.60934));
-        current.put("condition", cw.path("weathercode").asInt());
+        int currentCode = cw.path("weathercode").asInt();
+        current.put("condition", describeWeatherCode(currentCode));
         out.put("current", current);
 
         JsonNode daily = forecast.path("daily");
@@ -102,7 +137,8 @@ public final class WeatherForecastTool implements Tool {
             d.put("date", times.path(i).asText());
             d.put("high_F", highs.path(i).asDouble());
             d.put("low_F", lows.path(i).asDouble());
-            d.put("condition", codes.path(i).asInt());
+            int code = codes.path(i).asInt();
+            d.put("condition", describeWeatherCode(code));
             fc.add(d);
         }
         out.put("forecast", fc);
@@ -223,5 +259,9 @@ public final class WeatherForecastTool implements Tool {
             throw new IllegalStateException("HTTP " + res.statusCode() + " from " + uri);
         }
         return JSON.readTree(res.body());
+    }
+
+    static String describeWeatherCode(int code) {
+        return WMO_WEATHER_CODES.getOrDefault(code, "Unknown");
     }
 }

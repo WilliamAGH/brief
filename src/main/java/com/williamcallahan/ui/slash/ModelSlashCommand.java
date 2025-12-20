@@ -1,4 +1,4 @@
-package com.williamcallahan.lattetui.slash;
+package com.williamcallahan.ui.slash;
 
 /**
  * Opens the model selection palette.

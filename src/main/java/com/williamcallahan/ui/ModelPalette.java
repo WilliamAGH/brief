@@ -1,9 +1,9 @@
-package com.williamcallahan.lattetui;
+package com.williamcallahan.ui;
 
-import org.flatscrew.latte.input.key.KeyAliases;
-import org.flatscrew.latte.input.key.KeyAliases.KeyAlias;
-import org.flatscrew.latte.input.key.KeyType;
-import org.flatscrew.latte.message.KeyPressMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
+import com.williamcallahan.tui4j.compat.bubbletea.message.KeyPressMessage;
 
 import java.util.List;
 
@@ -100,13 +100,27 @@ final class ModelPalette {
         return new PaletteResult(true, null);
     }
 
-    void applyOverlay(List<String> baseLines, int innerWidth, int innerHeight, int dividerRow) {
-        if (!open) return;
+    PaletteResult click(int index) {
+        if (!open) return new PaletteResult(false, null);
+        List<ModelChoice> matches = filtered();
+        if (matches.isEmpty()) {
+            close();
+            return new PaletteResult(true, null);
+        }
+        int clamped = Math.max(0, Math.min(index, matches.size() - 1));
+        String selected = matches.get(clamped).id();
+        close();
+        return new PaletteResult(true, selected);
+    }
+
+    PaletteOverlay.Overlay applyOverlay(List<String> baseLines, int innerWidth, int innerHeight, int dividerRow) {
+        if (!open) return null;
         List<ModelChoice> matches = filtered();
         int clampedIndex = Math.min(selectedIndex, Math.max(0, matches.size() - 1));
         PaletteOverlay.Overlay overlay = PaletteOverlay.render(
             matches, clampedIndex, "Select Model", filter, innerWidth, innerHeight, dividerRow
         );
         PaletteOverlay.apply(overlay, baseLines);
+        return overlay;
     }
 }

@@ -1,14 +1,8 @@
 # Environment Variables & API Keys
 
-Brief requires an OpenAI API key and supports optional configuration through environment variables.
+Brief requires an OpenAI API key (or compatible provider) for chat completions.
 
-## Required
-
-| Variable | Description |
-|----------|-------------|
-| `OPENAI_API_KEY` | Your OpenAI API key. Required for chat completions. |
-
-### Getting an OpenAI API Key
+## Getting an OpenAI API Key
 
 1. Go to [platform.openai.com](https://platform.openai.com) and sign up or log in
 2. Navigate to **API Keys** in the left sidebar (or go directly to [platform.openai.com/api-keys](https://platform.openai.com/api-keys))
@@ -17,10 +11,77 @@ Brief requires an OpenAI API key and supports optional configuration through env
 
 For the full walkthrough, see the [OpenAI Quickstart Guide](https://platform.openai.com/docs/quickstart).
 
-## Optional
+---
+
+## For Users (Homebrew Install)
+
+If you installed Brief via Homebrew (`brew install williamagh/tap/brief`), configuration is simple:
+
+### Option 1: In-App Prompt (Easiest)
+
+Just run `brief` — the app will prompt you for your API key on first launch and save it to:
+
+```
+~/.config/brief/config
+```
+
+Your key is stored locally and never transmitted anywhere except to OpenAI (or your configured provider).
+
+### Option 2: Environment Variable
+
+Set `OPENAI_API_KEY` in your shell config (`~/.zshrc` or `~/.bashrc`):
+
+```bash
+export OPENAI_API_KEY="sk-..."
+```
+
+Reload with `source ~/.zshrc` (or restart your terminal), then run `brief`.
+
+> **Priority:** Environment variables override the config file. This lets you temporarily use a different key without modifying your saved configuration.
+
+---
+
+## For Developers (Local Development)
+
+If you're building Brief from source, additional options are available:
+
+### Option 1: `.env` File (Recommended for Development)
+
+The Makefile automatically loads a `.env` file from the project root:
+
+```bash
+cp .env-example .env
+```
+
+Edit `.env` with your API key, then:
+
+```bash
+make run
+```
+
+The `.env` file is in `.gitignore`, so your keys won't be committed.
+
+> **Note:** The `.env` file only works with `make run`. It's not used when running the installed `brief` binary directly.
+
+### Option 2: Inline with Command
+
+Set variables for a single command:
+
+```bash
+OPENAI_API_KEY="sk-..." make run
+```
+
+### Option 3: Shell Profile
+
+Same as the user option above — add to `~/.zshrc` or `~/.bashrc` for persistent access.
+
+---
+
+## Optional Variables
 
 | Variable | Description |
 |----------|-------------|
+| `OPENAI_API_KEY` | Your API key. Required for chat completions. |
 | `OPENAI_BASE_URL` | Custom API endpoint for OpenAI-compatible services (OpenRouter, LMStudio, etc.) |
 | `LLM_MODEL` | Default model ID (e.g., `gpt-4o`, `gpt-4o-mini`). Falls back to SDK default if unset. |
 
@@ -33,42 +94,6 @@ For the full walkthrough, see the [OpenAI Quickstart Guide](https://platform.ope
 | `BRIEF_SCROLLBACK` | `1` | Print debug output to scrollback |
 | `BRIEF_SHOW_TOOLS` | `1` | Display tool call messages in the UI |
 | `BRIEF_AUTOWRAP` | `1` | Enable terminal autowrap |
-
-## Setting Environment Variables
-
-### Method 1: `.env` File (Recommended)
-
-The Makefile automatically loads a `.env` file from the project root. Copy the example and fill in your key:
-
-```bash
-cp .env-example .env
-```
-
-Then edit `.env` with your API key and run:
-
-```bash
-make run
-```
-
-The `.env` file is already in `.gitignore`, so your keys won't be committed.
-
-### Method 2: Inline with Command
-
-Set variables for a single command:
-
-```bash
-OPENAI_API_KEY="sk-..." make run
-```
-
-### Method 3: Shell Profile (Persistent, Global)
-
-Add to your shell config (`~/.zshrc` or `~/.bashrc`) if you want the same keys available across all projects:
-
-```bash
-export OPENAI_API_KEY="sk-..."
-```
-
-Reload with `source ~/.zshrc` (or restart your terminal).
 
 ## Using Alternative Providers
 

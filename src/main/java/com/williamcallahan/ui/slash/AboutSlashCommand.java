@@ -1,4 +1,4 @@
-package com.williamcallahan.lattetui.slash;
+package com.williamcallahan.ui.slash;
 
 /** /about output. */
 public final class AboutSlashCommand {
