@@ -60,10 +60,11 @@ jobs:
           SHA256: ${{ steps.sha.outputs.SHA256 }}
         run: |
           cd homebrew-tap
-          # Replace version in URL and any version strings (matches semver like 0.1.1)
-          sed -i -E "s|brief-[0-9]+\.[0-9]+\.[0-9]+\.zip|brief-${VERSION}.zip|g" Formula/brief.rb
-          # Replace sha256 hash value (matches 64 hex chars)
-          sed -i -E "s|sha256 \"[a-f0-9]{64}\"|sha256 \"${SHA256}\"|g" Formula/brief.rb
+          # Replace version in URL (matches semver like 0.1.1 OR placeholder ${VERSION})
+          sed -i -E "s|brief-([0-9]+\.[0-9]+\.[0-9]+|\\\$\{VERSION\})\.zip|brief-${VERSION}.zip|g" Formula/brief.rb
+          sed -i -E "s|/v([0-9]+\.[0-9]+\.[0-9]+|\\\$\{VERSION\})/|/v${VERSION}/|g" Formula/brief.rb
+          # Replace sha256 hash value (matches 64 hex chars OR placeholder ${SHA256})
+          sed -i -E "s|sha256 \"([a-f0-9]{64}|\\\$\{SHA256\})\"|sha256 \"${SHA256}\"|g" Formula/brief.rb
 
       - name: Commit and push to tap
         env:
