@@ -60,8 +60,11 @@ jobs:
           SHA256: ${{ steps.sha.outputs.SHA256 }}
         run: |
           cd homebrew-tap
-          sed -i "s|\${VERSION}|${VERSION}|g" Formula/brief.rb
-          sed -i "s|\${SHA256}|${SHA256}|g" Formula/brief.rb
+          # Replace version in URL (matches semver like 0.1.1 OR placeholder ${VERSION})
+          sed -i -E "s|brief-([0-9]+\.[0-9]+\.[0-9]+|\\\$\{VERSION\})\.zip|brief-${VERSION}.zip|g" Formula/brief.rb
+          sed -i -E "s|/v([0-9]+\.[0-9]+\.[0-9]+|\\\$\{VERSION\})/|/v${VERSION}/|g" Formula/brief.rb
+          # Replace sha256 hash value (matches 64 hex chars OR placeholder ${SHA256})
+          sed -i -E "s|sha256 \"([a-f0-9]{64}|\\\$\{SHA256\})\"|sha256 \"${SHA256}\"|g" Formula/brief.rb
 
       - name: Commit and push to tap
         env:
@@ -71,5 +74,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/brief.rb
-          git commit -m "Update brief to v${VERSION}"
+          # Only commit if there are changes
+          git diff --staged --quiet || git commit -m "Update brief to v${VERSION}"
           git push

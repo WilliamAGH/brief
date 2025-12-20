@@ -40,6 +40,16 @@ Then run `brief` — the app will prompt you for your API key on first launch an
 brief
 ```
 
+### Upgrading
+
+```bash
+# Upgrade stable release
+brew upgrade brief
+
+# Upgrade nightly (HEAD)
+brew upgrade --fetch-HEAD brief
+```
+
 For alternative providers (OpenRouter, Ollama, LMStudio) or advanced configuration, see the [setup guide](docs/environment-variables-api-keys.md).
 
 ## Development
