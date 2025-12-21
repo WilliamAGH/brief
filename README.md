@@ -18,12 +18,6 @@ Brief is a showcase of what's possible in modern Java in 2026, and the interface
 
 ### Homebrew (macOS)
 
-[Homebrew](https://brew.sh/) (package manager)
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
 ```bash
 brew install williamagh/tap/brief
 ```
@@ -38,16 +32,6 @@ Then run `brief` — the app will prompt you for your API key on first launch an
 
 ```bash
 brief
-```
-
-### Upgrading
-
-```bash
-# Upgrade stable release
-brew upgrade brief
-
-# Upgrade nightly (HEAD)
-brew upgrade --fetch-HEAD brief
 ```
 
 For alternative providers (OpenRouter, Ollama, LMStudio) or advanced configuration, see the [setup guide](docs/environment-variables-api-keys.md).

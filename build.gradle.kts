@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.williamcallahan"
-version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.1.3-SNAPSHOT"
+version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.1.2-SNAPSHOT"
 val tui4jLocalRequested = listOf(
     findProperty("tui4jLocal")?.toString(),
     System.getenv("TUI4J_LOCAL"),
