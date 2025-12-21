@@ -14,10 +14,13 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** Executes tool calls requested by the LLM, feeding results back until completion. */
 public final class ToolExecutor {
 
+    private static final Logger LOG = Logger.getLogger(ToolExecutor.class.getName());
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {};
     private static final int MAX_ITERATIONS = 3;
@@ -54,7 +57,10 @@ public final class ToolExecutor {
                 .findFirst()
                 .map(c -> c.message())
                 .orElse(null);
-            if (msg == null) return "";
+            if (msg == null) {
+                LOG.warning("API returned no message in completion response");
+                return "Unable to get a response. Please try again.";
+            }
 
             List<ChatCompletionMessageToolCall> toolCalls = msg.toolCalls().orElse(List.of());
             if (toolCalls.isEmpty()) {
@@ -99,6 +105,7 @@ public final class ToolExecutor {
             if (tool == null) throw new IllegalArgumentException("Unknown tool: " + toolName);
             result = tool.execute(args);
         } catch (Exception e) {
+            LOG.log(Level.WARNING, "Tool execution failed: " + toolName, e);
             result = Map.of("error", e.getMessage() == null ? "Error" : e.getMessage());
         }
 
