@@ -1,6 +1,11 @@
 # Brief
 
-Brief is a terminal UI app built with [tui4j](https://github.com/williamcallahan/tui4j).
+Brief is a terminal OpenAI ChatGPT interface for fast, keyboard-first chat and tool use.
+It includes a slash-command palette, local tool execution (e.g., live weather), and supports OpenAI-compatible providers.
+
+![Brief screenshot](docs/assets/brief-screenshot-1.png)
+
+Built with [tui4j](https://github.com/williamcallahan/tui4j).
 
 Canonical repo: https://github.com/WilliamAGH/brief
 
@@ -61,41 +66,6 @@ make run
 make run     # Build and run
 make build   # Build only
 make clean   # Clean build artifacts
-```
-
-## Package Structure
-
-```
-src/main/java/com/williamcallahan/
-├── Main.java
-├── domain/
-│   ├── ChatMessage.java
-│   ├── Conversation.java
-│   ├── Role.java
-│   └── ToolCall.java
-├── service/
-│   ├── ChatCompletionService.java
-│   ├── OpenAiService.java
-│   ├── ToolExecutor.java
-│   └── tools/
-│       ├── Tool.java
-│       └── WeatherForecastTool.java
-└── ui/
-    ├── ApiKeyPromptScreen.java
-    ├── ChatConversationScreen.java
-    ├── ConfigPromptScreen.java
-    ├── HistoryViewport.java
-    ├── MouseSelectionController.java
-    ├── SlashCommandPalette.java
-    ├── TuiTheme.java
-    ├── WelcomeScreen.java
-    └── slash/
-        ├── AboutSlashCommand.java
-        ├── ClearSlashCommand.java
-        ├── NewSlashCommand.java
-        ├── SlashCommand.java
-        ├── SlashCommands.java
-        └── WeatherSlashCommand.java
 ```
 
 ## Persistence
