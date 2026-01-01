@@ -380,22 +380,23 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         int viewportWidth = Math.max(40, width);
         int viewportHeight = Math.max(12, height);
 
+        // Use only left, right, and bottom borders - we'll render top border manually with title
         Style frame = Style.newStyle()
-            .border(StandardBorder.NormalBorder, true, true, true, true)
+            .border(StandardBorder.NormalBorder, false, true, true, true)
             .borderForeground(TuiTheme.BORDER)
             .padding(0, 1, 0, 1);
 
         int frameWidth = Math.max(1, viewportWidth - frame.getHorizontalBorderSize() - frame.getHorizontalMargins());
-        int frameHeight = Math.max(1, viewportHeight - frame.getVerticalBorderSize() - frame.getVerticalMargins());
+        // Account for the custom top border we'll add (1 line)
+        int frameHeight = Math.max(1, viewportHeight - frame.getVerticalBorderSize() - frame.getVerticalMargins() - 1);
         frame.width(frameWidth).height(frameHeight);
 
         int innerWidth = Math.max(20, viewportWidth - frame.getHorizontalFrameSize());
-        int innerHeight = Math.max(4, viewportHeight - frame.getVerticalFrameSize());
+        // Subtract 1 for our custom top border line
+        int innerHeight = Math.max(4, viewportHeight - frame.getVerticalFrameSize() - 1);
 
         innerLeft = frame.getBorderLeftSize() + frame.leftPadding();
-        innerTop = frame.getBorderTopSize();
-
-        String header = renderHeader(innerWidth);
+        innerTop = 1; // Top border is now line 0, content starts at line 1
 
         String composerView = composer.view();
         List<String> composerLines = splitLines(composerView);
@@ -414,19 +415,17 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         );
         String statusRow = joinLeftRight(statusLeft, rightHints, innerWidth);
 
-        int headerHeight = 1;
         int dividerHeight = 1;
         int composerHeight = composerLines.size();
         int statusHeight = 1;
-        int fixedHeight = headerHeight + dividerHeight + composerHeight + statusHeight;
+        int fixedHeight = dividerHeight + composerHeight + statusHeight;
         int historyHeight = Math.max(1, innerHeight - fixedHeight);
 
         List<String> lines = new ArrayList<>();
-        lines.add(TuiTheme.padRight(header, innerWidth));
 
         HistoryRender historyRender = renderHistory(innerWidth, historyHeight);
         List<String> visibleHistory = new ArrayList<>(historyRender.visibleStyled());
-        int historyStartRow = frame.getBorderTopSize() + headerHeight;
+        int historyStartRow = 1; // After custom top border
         int historyStartCol = frame.getBorderLeftSize() + frame.leftPadding();
         mouseSelection.updateHistoryMapping(
             historyStartRow,
@@ -492,7 +491,11 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         }
 
         String content = String.join("\n", lines);
-        return frame.render(content);
+        String framedContent = frame.render(content);
+
+        // Render custom top border with title embedded
+        String topBorder = renderTitleBorder(innerWidth + 2); // +2 for left/right padding
+        return topBorder + "\n" + framedContent;
     }
 
     private List<MouseTarget> buildMouseTargets(
@@ -682,7 +685,7 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         };
     }
 
-    private String renderHeader(int width) {
+    private String renderTitleBorder(int width) {
         long nowMs = System.currentTimeMillis();
         String title = "brief";
         String info = conversation.getDefaultModel();
@@ -694,26 +697,67 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             info = info + "  " + status;
         }
 
-        String configError = config.transientError(nowMs);
-        if (configError == null) {
-            return TuiTheme.headerWithInfo(title, info, width);
-        }
-
+        Style borderStyle = Style.newStyle().foreground(TuiTheme.BORDER);
         Style titleStyle = Style.newStyle().foreground(TuiTheme.PRIMARY).bold(true);
         Style infoStyle = Style.newStyle().foreground(TuiTheme.MUTED);
-        Style spacerStyle = Style.newStyle().foreground(TuiTheme.MUTED).faint(true);
 
+        String configError = config.transientError(nowMs);
+
+        // Border characters
+        String topLeft = borderStyle.render("┌");
+        String topRight = borderStyle.render("┐");
+        String horizontal = "─";
+
+        // Calculate available space for content (width minus corners)
+        int contentWidth = width - 2;
+
+        // Render title and info
         String titleRendered = titleStyle.render(title);
         String infoRendered = infoStyle.render(info);
 
-        int usedWidth = TuiTheme.visualWidth(title) + TuiTheme.visualWidth(info) + 2;
-        int middleWidth = Math.max(1, width - usedWidth);
+        int titleVisualWidth = TuiTheme.visualWidth(title);
+        int infoVisualWidth = TuiTheme.visualWidth(info);
+
+        if (configError == null) {
+            // No error: ┌─ brief ──────────────────── model-name ─┐
+            // Need space for: " brief " on left, " model-name " on right, line chars between
+            int usedWidth = titleVisualWidth + infoVisualWidth + 4; // 4 for spaces around title and info
+            int lineWidth = Math.max(0, contentWidth - usedWidth);
+
+            String line = borderStyle.render(horizontal.repeat(lineWidth));
+            return topLeft
+                + borderStyle.render(horizontal + " ")
+                + titleRendered
+                + borderStyle.render(" ")
+                + line
+                + borderStyle.render(" ")
+                + infoRendered
+                + borderStyle.render(" " + horizontal)
+                + topRight;
+        }
+
+        // With error: ┌─ brief ─ error message ─ model-name ─┐
+        int usedWidth = titleVisualWidth + infoVisualWidth + 6; // spaces around all three elements
+        int middleWidth = Math.max(1, contentWidth - usedWidth);
 
         String clipped = TuiTheme.truncate(configError, middleWidth);
-        String centered = TuiTheme.padRight(TuiTheme.center(clipped, middleWidth), middleWidth);
-        String middleRendered = TuiTheme.warning().render(centered);
+        int clippedWidth = TuiTheme.visualWidth(clipped);
+        String errorRendered = TuiTheme.warning().render(clipped);
 
-        return titleRendered + spacerStyle.render(" ") + middleRendered + spacerStyle.render(" ") + infoRendered;
+        // Distribute remaining line chars between sections
+        int remainingLine = contentWidth - titleVisualWidth - infoVisualWidth - clippedWidth - 6;
+        int leftLine = Math.max(1, remainingLine / 2);
+        int rightLine = Math.max(1, remainingLine - leftLine);
+
+        return topLeft
+            + borderStyle.render(horizontal + " ")
+            + titleRendered
+            + borderStyle.render(" " + horizontal.repeat(leftLine) + " ")
+            + errorRendered
+            + borderStyle.render(" " + horizontal.repeat(rightLine) + " ")
+            + infoRendered
+            + borderStyle.render(" " + horizontal)
+            + topRight;
     }
 
     private static String joinLeftRight(String left, String right, int width) {

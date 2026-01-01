@@ -64,22 +64,6 @@ public final class TuiTheme {
         return Style.newStyle().foreground(SECONDARY);
     }
 
-    /** Renders a header with a title and supplemental info separated by a line. */
-    public static String headerWithInfo(String title, String info, int width) {
-        Style titleStyle = Style.newStyle().foreground(PRIMARY).bold(true);
-        Style infoStyle = Style.newStyle().foreground(MUTED);
-        Style lineStyle = Style.newStyle().foreground(MUTED).faint(true);
-
-        String titleRendered = titleStyle.render(title);
-        String infoRendered = infoStyle.render(info);
-
-        int usedWidth = visualWidth(title) + visualWidth(info) + 2;
-        int lineWidth = Math.max(1, width - usedWidth);
-        String line = lineStyle.render(" " + "─".repeat(lineWidth) + " ");
-
-        return titleRendered + line + infoRendered;
-    }
-
     /** Renders a horizontal divider line. */
     public static String divider(int width, TerminalColor color) {
         Style style = Style.newStyle().foreground(color);
