@@ -30,7 +30,7 @@ val tui4jLocalEnabled = tui4jLocalRequested || (!isCi && tui4jLocalJarExists)
 val tui4jVersion = if (tui4jLocalEnabled) tui4jSnapshotVersion else tui4jReleaseVersion
 
 application {
-    mainClass = "com.williamcallahan.Main"
+    mainClass = "com.williamcallahan.chatclient.Main"
     applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
 }
 
