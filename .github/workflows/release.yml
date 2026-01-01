@@ -33,6 +33,11 @@ jobs:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: ./gradlew distZip -Pversion="$VERSION"
 
+      - name: Prepare latest release asset
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: cp "build/distributions/brief-${VERSION}.zip" "build/distributions/brief.zip"
+
       - name: Calculate SHA256
         id: sha
         env:
@@ -44,7 +49,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/distributions/brief-${{ steps.version.outputs.VERSION }}.zip
+          files: |
+            build/distributions/brief-${{ steps.version.outputs.VERSION }}.zip
+            build/distributions/brief.zip
           generate_release_notes: true
 
       - name: Checkout homebrew-tap
