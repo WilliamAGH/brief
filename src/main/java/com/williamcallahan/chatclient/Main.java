@@ -61,7 +61,7 @@ public class Main {
 
         // Terminal mode setup - only after config validation succeeds
         boolean enableSelectMouse = "select".equalsIgnoreCase(mouseMode);
-        boolean enableAllMotionMouse = "1".equals(mouseMode) || enableSelectMouse;
+        boolean enableAllMotionMouse = "1".equals(mouseMode);
         boolean enableCellMotionMouse = enableSelectMouse;
 
         if (disableAutoWrap) {
@@ -114,6 +114,11 @@ public class Main {
      * Register handler for SIGTSTP (Ctrl+Z suspend).
      * Resets terminal state before suspend to prevent escape sequence contamination,
      * then re-registers default handler so the process actually suspends.
+     *
+     * <p>Note: Uses {@code sun.misc.Signal} to raise SIGTSTP. This is an internal JDK API
+     * with no standard alternative for raising signals to the current process. The call is
+     * guarded by try/catch so platforms lacking this API gracefully degrade (terminal resets
+     * but process doesn't suspend).
      */
     private static void registerSuspendHandlers() {
         try {
