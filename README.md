@@ -41,6 +41,28 @@ brief
 
 For alternative providers (OpenRouter, Ollama, LMStudio) or advanced configuration, see the [setup guide](docs/environment-variables-api-keys.md).
 
+### GitHub Releases (macOS/Linux/Windows)
+
+Download the latest release zip:
+
+```bash
+curl -L -o brief.zip https://github.com/WilliamAGH/brief/releases/latest/download/brief.zip
+unzip brief.zip
+cd brief-*/
+./bin/brief
+```
+
+Windows (PowerShell):
+
+```powershell
+Invoke-WebRequest -Uri https://github.com/WilliamAGH/brief/releases/latest/download/brief.zip -OutFile brief.zip
+Expand-Archive brief.zip -DestinationPath .
+cd brief-*
+.\bin\brief.bat
+```
+
+Requires Java 25. The app will prompt you for your API key on first launch.
+
 ## Development
 
 ### Requirements
