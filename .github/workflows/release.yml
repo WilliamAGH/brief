@@ -54,6 +54,11 @@ jobs:
             build/distributions/brief.zip
           generate_release_notes: true
 
+      - name: Update latest tag
+        run: |
+          git tag -f latest
+          git push origin latest --force
+
       - name: Checkout homebrew-tap
         uses: actions/checkout@v4
         with:
