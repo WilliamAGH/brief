@@ -6,99 +6,140 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 /**
- * Reads and writes user preferences to ~/.config/brief/config.
- *
- * Uses XDG_CONFIG_HOME if set, otherwise defaults to ~/.config.
- * IO failures are soft errors — stored transiently for UI display, not thrown.
+ * User preferences stored in ~/.config/brief/config.
+ * Resolution priority controlled by BRIEF_CONFIG_PRIORITY (env var or config.priority property).
  */
 public final class Config {
 
-    private static final String APP_DIR = "brief";
-    private static final String CONFIG_FILE = "config";
+    public enum Priority { ENV, CONFIG }
+
     private static final long ERROR_DISPLAY_MS = 10_000;
 
     private final Path configPath;
     private final Properties props = new Properties();
-
+    private final Priority priority;
     private String lastError;
     private long lastErrorAt;
 
     public Config() {
-        this.configPath = resolveConfigPath();
+        String xdg = System.getenv("XDG_CONFIG_HOME");
+        Path base = (xdg != null && !xdg.isBlank()) ? Path.of(xdg)
+            : Path.of(System.getProperty("user.home"), ".config");
+        this.configPath = base.resolve("brief").resolve("config");
         load();
+        this.priority = resolvePriority();
     }
 
-    public String userName() {
-        return props.getProperty("user.name", "").trim();
+    /** Returns the active priority mode. */
+    public Priority priority() { return priority; }
+
+    // ── Resolve (respects priority setting) ─────────────────────────────────────
+
+    public String resolveApiKey()  { return resolve("OPENAI_API_KEY", "openai.api_key"); }
+    public String resolveBaseUrl() { return resolve("OPENAI_BASE_URL", "openai.base_url"); }
+    public String resolveModel()   { return resolve("LLM_MODEL", "model"); }
+
+    public boolean hasResolvedApiKey() { return resolveApiKey() != null; }
+
+    private String resolve(String envVar, String propKey) {
+        String env = System.getenv(envVar);
+        String cfg = props.getProperty(propKey, "").trim();
+        boolean hasEnv = env != null && !env.isBlank();
+        boolean hasCfg = !cfg.isEmpty();
+
+        if (priority == Priority.CONFIG) {
+            return hasCfg ? cfg : (hasEnv ? env.trim() : null);
+        } else {
+            return hasEnv ? env.trim() : (hasCfg ? cfg : null);
+        }
     }
 
-    public void setUserName(String name) {
-        props.setProperty("user.name", name == null ? "" : name.trim());
+    /** Bootstrap priority (this meta-setting always uses env > config). */
+    private Priority resolvePriority() {
+        String env = System.getenv("BRIEF_CONFIG_PRIORITY");
+        if (env != null && !env.isBlank()) {
+            return "config".equalsIgnoreCase(env.trim()) ? Priority.CONFIG : Priority.ENV;
+        }
+        String cfg = props.getProperty("config.priority", "").trim();
+        return "config".equalsIgnoreCase(cfg) ? Priority.CONFIG : Priority.ENV;
+    }
+
+    // ── Setters (persist to config file) ────────────────────────────────────────
+
+    public void setApiKey(String v)  { set("openai.api_key", v); }
+    public void setBaseUrl(String v) { set("openai.base_url", v); }
+    public void setModel(String v)   { set("model", v); }
+    public void setUserName(String v){ set("user.name", v); }
+
+    private void set(String key, String value) {
+        props.setProperty(key, value == null ? "" : value.trim());
         save();
     }
 
-    public boolean hasUserName() {
-        String name = userName();
-        return name != null && !name.isBlank();
+    // ── User name (no env var, config only) ─────────────────────────────────────
+
+    public String userName() { return props.getProperty("user.name", "").trim(); }
+    public boolean hasUserName() { return !userName().isBlank(); }
+
+    // ── Summary settings ────────────────────────────────────────────────────────
+
+    private static final int DEFAULT_SUMMARY_TARGET_TOKENS = 8000;
+
+    /** Returns whether summarization is enabled (default: true). */
+    public boolean isSummaryEnabled() {
+        String cfg = props.getProperty("summary.disabled", "").trim();
+        return !"true".equalsIgnoreCase(cfg);
     }
 
-    public String model() {
-        return props.getProperty("model", "").trim();
+    /** Sets whether summarization is disabled. */
+    public void setSummaryDisabled(boolean disabled) {
+        set("summary.disabled", disabled ? "true" : "false");
     }
 
-    public void setModel(String model) {
-        props.setProperty("model", model == null ? "" : model.trim());
-        save();
+    /** Returns the target token count for summaries (default: 8000). */
+    public int getSummaryTargetTokens() {
+        String cfg = props.getProperty("summary.target_tokens", "").trim();
+        if (!cfg.isEmpty()) {
+            int parsed = parseIntOrDefault(cfg);
+            if (parsed > 0) {
+                return parsed;
+            }
+        }
+        return DEFAULT_SUMMARY_TARGET_TOKENS;
     }
 
-    public boolean hasModel() {
-        String m = model();
-        return m != null && !m.isBlank();
+    private int parseIntOrDefault(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
     }
 
-    public String apiKey() {
-        return props.getProperty("openai.api_key", "");
+    /** Sets the target token count for summaries. */
+    public void setSummaryTargetTokens(int tokens) {
+        set("summary.target_tokens", String.valueOf(tokens));
     }
 
-    public void setApiKey(String key) {
-        props.setProperty("openai.api_key", key == null ? "" : key);
-        save();
-    }
+    // ── Transient error display ─────────────────────────────────────────────────
 
-    /** Returns API key from env var (priority) or config file. Null if neither set. */
-    public String resolveApiKey() {
-        String envKey = System.getenv("OPENAI_API_KEY");
-        if (envKey != null) return envKey;
-        String configKey = apiKey();
-        return configKey.isEmpty() ? null : configKey;
-    }
-
-    /** True if API key is set via env var or config (empty string counts as set). */
-    public boolean hasResolvedApiKey() {
-        return System.getenv("OPENAI_API_KEY") != null || !apiKey().isEmpty();
-    }
-
-    /** Returns transient error message if within display window, null otherwise. */
     public String transientError(long nowMs) {
-        if (lastError == null) return null;
-        if (nowMs - lastErrorAt > ERROR_DISPLAY_MS) {
+        if (lastError == null || nowMs - lastErrorAt > ERROR_DISPLAY_MS) {
             lastError = null;
             return null;
         }
         return lastError;
     }
 
-    private void setError(String msg) {
-        this.lastError = msg;
-        this.lastErrorAt = System.currentTimeMillis();
-    }
+    // ── IO ──────────────────────────────────────────────────────────────────────
 
     private void load() {
         if (!Files.exists(configPath)) return;
         try (var reader = Files.newBufferedReader(configPath)) {
             props.load(reader);
         } catch (IOException e) {
-            setError("Config unreadable: " + configPath.getFileName());
+            lastError = "Config unreadable: " + configPath.getFileName();
+            lastErrorAt = System.currentTimeMillis();
         }
     }
 
@@ -109,15 +150,8 @@ public final class Config {
                 props.store(writer, "brief configuration");
             }
         } catch (IOException e) {
-            setError("Settings not saved: " + configPath.getFileName());
+            lastError = "Settings not saved: " + configPath.getFileName();
+            lastErrorAt = System.currentTimeMillis();
         }
-    }
-
-    private static Path resolveConfigPath() {
-        String xdgConfig = System.getenv("XDG_CONFIG_HOME");
-        Path base = (xdgConfig != null && !xdgConfig.isBlank())
-            ? Path.of(xdgConfig)
-            : Path.of(System.getProperty("user.home"), ".config");
-        return base.resolve(APP_DIR).resolve(CONFIG_FILE);
     }
 }

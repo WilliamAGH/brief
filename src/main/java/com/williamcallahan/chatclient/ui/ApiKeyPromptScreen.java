@@ -48,17 +48,8 @@ public class ApiKeyPromptScreen extends ConfigPromptScreen {
             .createdAt(OffsetDateTime.now(ZoneOffset.UTC))
             .updatedAt(OffsetDateTime.now(ZoneOffset.UTC));
 
-        String envModel = System.getenv("LLM_MODEL");
-        String model = null;
-        boolean needsModelSelection = false;
-
-        if (envModel != null && !envModel.isBlank()) {
-            model = envModel.trim();
-        } else if (config.hasModel()) {
-            model = config.model();
-        } else {
-            needsModelSelection = true;
-        }
+        String model = config.resolveModel();
+        boolean needsModelSelection = (model == null);
 
         if (model != null) {
             convoBuilder.defaultModel(model);
