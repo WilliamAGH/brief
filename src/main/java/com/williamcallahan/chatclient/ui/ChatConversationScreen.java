@@ -10,6 +10,7 @@ import com.williamcallahan.chatclient.ui.slash.SlashCommands;
 import com.williamcallahan.chatclient.ui.slash.WeatherSlashCommand;
 import com.williamcallahan.chatclient.service.ChatCompletionService;
 import com.williamcallahan.chatclient.service.OpenAiService;
+import com.williamcallahan.chatclient.service.SummaryService;
 import com.williamcallahan.chatclient.service.ToolExecutor;
 import com.williamcallahan.chatclient.service.tools.WeatherForecastTool;
 import com.williamcallahan.tui4j.compat.bubbletea.Command;
@@ -17,23 +18,25 @@ import com.williamcallahan.tui4j.compat.bubbletea.Message;
 import com.williamcallahan.tui4j.compat.bubbletea.Model;
 import com.williamcallahan.tui4j.compat.bubbletea.UpdateResult;
 import com.williamcallahan.tui4j.ansi.TextWrapper;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Style;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.border.StandardBorder;
+import com.williamcallahan.tui4j.compat.lipgloss.border.StandardBorder;
+import com.williamcallahan.tui4j.compat.lipgloss.Style;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
+import com.williamcallahan.tui4j.compat.bubbletea.KeyMsg;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.Key;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
-import com.williamcallahan.tui4j.compat.bubbletea.message.KeyPressMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.message.QuitMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.message.WindowSizeMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.PasteMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.QuitMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.WindowSizeMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseButton;
 import com.williamcallahan.tui4j.input.MouseClickMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseMessage;
 import com.williamcallahan.tui4j.input.MouseTarget;
 import com.williamcallahan.tui4j.input.MouseTargetProvider;
-import com.williamcallahan.tui4j.compat.bubbletea.bubbles.spinner.Spinner;
-import com.williamcallahan.tui4j.compat.bubbletea.bubbles.spinner.TickMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.bubbles.spinner.SpinnerType;
-import com.williamcallahan.tui4j.compat.bubbletea.bubbles.textinput.TextInput;
+import com.williamcallahan.tui4j.compat.bubbles.spinner.Spinner;
+import com.williamcallahan.tui4j.compat.bubbles.spinner.TickMessage;
+import com.williamcallahan.tui4j.compat.bubbles.spinner.SpinnerType;
+import com.williamcallahan.tui4j.compat.bubbles.textarea.Textarea;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -84,8 +87,9 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
     private final OpenAiService openAiService;
     private final ChatCompletionService chatCompletionService;
     private final ToolExecutor toolExecutor;
+    private final SummaryService summaryService;
     private final List<SlashCommand> slashCommands = SlashCommands.defaults();
-    private final TextInput composer = new TextInput();
+    private final Textarea composer = new Textarea();
     private final SlashCommandPalette slashPalette = new SlashCommandPalette();
     private final ModelPalette modelPalette = new ModelPalette();
     private final boolean printToScrollback;
@@ -95,6 +99,7 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
 
     private int width = 80;
     private int height = 24;
+    private static final int MAX_COMPOSER_LINES = 6;
 
     private boolean waiting = false;
     private final HistoryViewport historyViewport = new HistoryViewport();
@@ -109,6 +114,11 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
     private String lastEnterText = null;
 
     private Spinner spinner = new Spinner(SpinnerType.DOT);
+
+    // Paste handling state
+    private record PastedContent(int index, String displayText, String actualText) {}
+    private final List<PastedContent> pastedContents = new ArrayList<>();
+    private int pasteCounter = 0;
 
     public ChatConversationScreen(String userName, Conversation conversation, Config config,
                                   int width, int height, boolean needsModelSelection) {
@@ -125,11 +135,15 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         this.openAiService = new OpenAiService(config);
         this.chatCompletionService = new ChatCompletionService(openAiService);
         this.toolExecutor = new ToolExecutor(chatCompletionService, List.of(new WeatherForecastTool()));
+        this.summaryService = new SummaryService(chatCompletionService, config);
 
+        // Configure Textarea for multi-line input
         composer.setPrompt("> ");
         composer.setPlaceholder("Ask me anything...");
-        composer.setCharLimit(4000);
-        composer.setWidth(this.width - 6);
+        composer.setShowLineNumbers(false);
+        composer.setEndOfBufferCharacter(' ');
+        composer.setMaxHeight(MAX_COMPOSER_LINES);
+        composer.setWidth(Math.max(20, this.width - 8));
         composer.focus();
     }
 
@@ -158,7 +172,7 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         if (msg instanceof WindowSizeMessage w) {
             width = Math.max(40, w.width());
             height = Math.max(12, w.height());
-            composer.setWidth(Math.max(20, width - 6));
+            composer.setWidth(Math.max(20, width - 8));
 
             if (needsModelSelection) {
                 needsModelSelection = false;
@@ -217,7 +231,12 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             return UpdateResult.from(this, maybePrintToScrollback("", reply.text()));
         }
 
-        if (msg instanceof KeyPressMessage key) {
+        // Handle pasted content - NEVER triggers submit, preserves line breaks
+        if (msg instanceof PasteMessage paste) {
+            return handlePaste(paste.content());
+        }
+
+        if (msg instanceof KeyMsg key) {
             if (KeyAliases.getKeyType(KeyAlias.KeyCtrlC) == key.type()) {
                 return UpdateResult.from(this, QuitMessage::new);
             }
@@ -289,13 +308,25 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
                 return UpdateResult.from(this);
             }
 
+            // Ctrl+J inserts a newline (standard terminal behavior)
+            if (KeyAliases.getKeyType(KeyAlias.KeyCtrlJ) == key.type()) {
+                return insertComposerNewline();
+            }
+
+            // Shift+Enter and Ctrl+Enter insert newlines (do NOT submit)
+            if (key.type() == KeyType.KeyShiftEnter || key.type() == KeyType.KeyCtrlEnter) {
+                return insertComposerNewline();
+            }
+
             if (KeyAliases.getKeyType(KeyAlias.KeyEnter) == key.type()) {
-                String text = composer.value().trim();
+                // Plain Enter submits
+                String text = resolveSubmitText();
                 if (text.isEmpty() || waiting) return UpdateResult.from(this);
 
                 long now = System.currentTimeMillis();
                 if (text.equals(lastEnterText) && (now - lastEnterAtMs) < 1000) {
                     composer.reset();
+                    clearPasteState();
                     return UpdateResult.from(this);
                 }
                 lastEnterText = text;
@@ -306,6 +337,63 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
 
         UpdateResult<? extends Model> inputUpdate = composer.update(msg);
         return UpdateResult.from(this, inputUpdate.command());
+    }
+
+    /**
+     * Insert a newline by going through the textarea's normal key binding path.
+     *
+     * This is important because the textarea's "insert rune/string" path sanitizes user input,
+     * and in tui4j's current port the sanitizer collapses newlines to spaces. Upstream Bubbles
+     * inserts newlines via the InsertNewline key binding, which splits the current line.
+     */
+    private UpdateResult<? extends Model> insertComposerNewline() {
+        KeyType enterType = KeyAliases.getKeyType(KeyAlias.KeyEnter);
+        UpdateResult<Textarea> r = composer.update(new KeyMsg(new Key(enterType)));
+        return UpdateResult.from(this, r.command());
+    }
+
+    /**
+     * Handles pasted content by creating a placeholder and storing the actual text.
+     * Line breaks are preserved; paste NEVER triggers submit.
+     */
+    private UpdateResult<? extends Model> handlePaste(String content) {
+        if (content == null || content.isEmpty()) {
+            return UpdateResult.from(this);
+        }
+
+        pasteCounter++;
+        SummaryService.PasteSummary summary = summaryService.processPaste(content, pasteCounter);
+
+        // Store the mapping from placeholder to actual content
+        pastedContents.add(new PastedContent(pasteCounter, summary.displayText(), summary.actualText()));
+
+        // Insert the placeholder (or content if short) into the composer
+        composer.insertString(summary.displayText() + " ");
+
+        return UpdateResult.from(this);
+    }
+
+    /**
+     * Resolves the submit text by replacing paste placeholders with actual content.
+     */
+    private String resolveSubmitText() {
+        String display = composer.value();
+
+        // Replace all placeholders with actual content
+        for (PastedContent pc : pastedContents) {
+            display = display.replace(pc.displayText(), pc.actualText());
+        }
+
+        clearPasteState();
+        return display.trim();
+    }
+
+    /**
+     * Clears paste state after submission or reset.
+     */
+    private void clearPasteState() {
+        pastedContents.clear();
+        pasteCounter = 0;
     }
 
     private UpdateResult<? extends Model> handleMouseClick(MouseClickMessage click) {
@@ -398,9 +486,8 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         innerLeft = frame.getBorderLeftSize() + frame.leftPadding();
         innerTop = 1; // Top border is now line 0, content starts at line 1
 
-        String composerView = composer.view();
-        List<String> composerLines = splitLines(composerView);
-        if (composerLines.isEmpty()) composerLines = List.of("");
+        List<String> composerLines = renderComposer(innerWidth);
+        if (composerLines.isEmpty()) composerLines = List.of(renderComposerLine("", 0, innerWidth, 0));
 
         String statusLeft = "";
         if (waiting) {
@@ -409,7 +496,7 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             statusLeft = spinnerStyle.render(spinner.view()) + " " + textStyle.render("thinking...");
         }
         String rightHints = TuiTheme.shortcutRow(
-            TuiTheme.shortcutHint("scroll", "Shift+↑/↓"),
+            TuiTheme.shortcutHint("newline", "Ctrl+J"),
             TuiTheme.shortcutHint("/", "commands"),
             TuiTheme.shortcutHint("esc", "quit")
         );
@@ -847,7 +934,7 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         StringBuilder out = new StringBuilder();
         out.append(label).append("\n");
 
-        String content = (m.content() == null) ? "" : m.content();
+        String content = sanitizeForDisplay((m.content() == null) ? "" : m.content());
         if (m.role() == Role.ASSISTANT && content.isBlank() && m.toolCalls() != null && !m.toolCalls().isEmpty()) {
             String toolName = m.toolCalls().getFirst().name();
             String banner = ToolCallBanner.render(toolName, wrapWidth);
@@ -863,6 +950,27 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         out.append("\n");
 
         return out.toString();
+    }
+
+    /**
+     * Sanitizes text for terminal display.
+     *
+     * Pasted content frequently includes ANSI escape sequences (colors/cursor moves) that will
+     * corrupt the TUI layout if rendered directly. We strip common ANSI sequences and normalize
+     * newlines for predictable wrapping.
+     */
+    private static String sanitizeForDisplay(String s) {
+        if (s == null || s.isEmpty()) return "";
+        String out = s.replace("\r\n", "\n").replace('\r', '\n');
+        // Tabs render with terminal-dependent width; normalize to spaces so wrapping stays correct.
+        out = out.replace("\t", "    ");
+        // ANSI CSI sequences (most common).
+        out = out.replaceAll("\u001B\\[[0-?]*[ -/]*[@-~]", "");
+        // ANSI OSC sequences (window title, hyperlinks, etc.).
+        out = out.replaceAll("\u001B\\][^\u0007]*(\u0007|\u001B\\\\)", "");
+        // Strip other control characters that can corrupt terminal layout (keep newlines).
+        out = out.replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]", "");
+        return out;
     }
 
     private void append(Role role, ChatMessage.Source source, String content) {
@@ -917,12 +1025,101 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         return s.substring(0, i + 1);
     }
 
-    private static List<String> splitLines(String s) {
-        if (s == null || s.isEmpty()) return List.of();
-        List<String> result = new ArrayList<>();
-        for (String line : s.split("\n", -1)) {
-            result.add(line);
+    /**
+     * Renders a clean input panel without repeated prompts.
+     * Shows "› " on the first line only, continuation lines are indented.
+     * Cursor is shown as reverse-video block on the current position.
+     */
+    private List<String> renderComposer(int width) {
+        String value = composer.value();
+        if (value == null) value = "";
+
+        // Show placeholder if empty
+        if (value.isEmpty()) {
+            return List.of(renderPlaceholderLine(width));
         }
+
+        // Split into lines (user creates lines with Shift+Enter)
+        String[] lines = value.split("\n", -1);
+
+        // Get cursor position
+        int cursorRow = composer.line();
+        int cursorCol = composer.lineInfo().columnOffset();
+
+        List<String> result = new ArrayList<>();
+        for (int i = 0; i < lines.length; i++) {
+            boolean hasCursor = (i == cursorRow);
+            int cursorPos = hasCursor ? cursorCol : -1;
+            result.add(renderComposerLine(lines[i], i, width, cursorPos));
+        }
+
         return result;
+    }
+
+    /**
+     * Renders a single composer line with prompt on first line only.
+     * If cursorPos >= 0, renders cursor at that position.
+     */
+    private String renderComposerLine(String text, int lineIndex, int width, int cursorPos) {
+        Style promptStyle = TuiTheme.inputPrompt();
+        Style textStyle = Style.newStyle().foreground(TuiTheme.PRIMARY);
+
+        String prefix;
+        if (lineIndex == 0) {
+            prefix = promptStyle.render("› ");
+        } else {
+            prefix = "  "; // Indent continuation lines to align with first line
+        }
+
+        // Calculate available width for text (subtract prefix width)
+        int prefixWidth = 2;
+        int textWidth = width - prefixWidth;
+
+        // Build the text with cursor
+        StringBuilder sb = new StringBuilder();
+        sb.append(prefix);
+
+        if (cursorPos < 0) {
+            // No cursor on this line
+            String displayText = text;
+            if (TuiTheme.visualWidth(displayText) > textWidth) {
+                displayText = TuiTheme.truncate(displayText, textWidth);
+            }
+            sb.append(textStyle.render(displayText));
+        } else {
+            // Render with cursor
+            int pos = Math.min(cursorPos, text.length());
+
+            // Text before cursor
+            if (pos > 0) {
+                sb.append(textStyle.render(text.substring(0, pos)));
+            }
+
+            // Cursor character (reverse video)
+            String cursorChar = (pos < text.length()) ? String.valueOf(text.charAt(pos)) : " ";
+            sb.append("\u001b[7m").append(cursorChar).append("\u001b[0m");
+
+            // Text after cursor
+            if (pos + 1 < text.length()) {
+                sb.append(textStyle.render(text.substring(pos + 1)));
+            }
+        }
+
+        return TuiTheme.padRight(sb.toString(), width);
+    }
+
+    /**
+     * Renders the placeholder line when composer is empty.
+     */
+    private String renderPlaceholderLine(int width) {
+        Style promptStyle = TuiTheme.inputPrompt();
+        Style placeholderStyle = TuiTheme.hint();
+
+        String prefix = promptStyle.render("› ");
+        // Show cursor at start, then placeholder
+        String cursor = "\u001b[7m \u001b[0m";
+        String placeholder = placeholderStyle.render("Ask me anything...");
+
+        return TuiTheme.padRight(prefix + cursor + placeholder, width);
     }
 }

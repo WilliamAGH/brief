@@ -1,7 +1,7 @@
 package com.williamcallahan.chatclient.ui;
 
 import com.williamcallahan.chatclient.ui.slash.SlashCommand;
-import com.williamcallahan.tui4j.compat.bubbletea.bubbles.textinput.TextInput;
+import com.williamcallahan.tui4j.compat.bubbles.textarea.Textarea;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -42,7 +42,7 @@ class SlashCommandPaletteTest {
     @Test
     void clickSubmitsCommandNameOnly() {
         SlashCommandPalette palette = new SlashCommandPalette();
-        TextInput composer = new TextInput();
+        Textarea composer = new Textarea();
         List<SlashCommand> commands = List.of(new TestCommand("/weather"), new TestCommand("/clear"));
 
         palette.openFromMouse(composer, commands);
