@@ -15,9 +15,10 @@ public class Main {
 
     private static final String DISABLE_AUTOWRAP = "\u001b[?7l";
     private static final String ENABLE_AUTOWRAP = "\u001b[?7h";
-    // Reset sequences: disable mouse modes (1000,1002,1003,1006), show cursor (?25h), reset cursor shape
+    // Reset sequences: disable mouse modes (1000,1002,1003,1006), disable bracketed paste (?2004l),
+    // show cursor (?25h), reset cursor shape
     private static final String RESET_TERMINAL =
-        "\u001b[?1000l\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?25h\u001b]22;\u001b\\";
+        "\u001b[?1000l\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?2004l\u001b[?25h\u001b]22;\u001b\\";
 
     public static void main(String[] args) {
         // Register shutdown hook to reset terminal on JVM exit
