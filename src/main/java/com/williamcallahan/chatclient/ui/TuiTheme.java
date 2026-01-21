@@ -1,10 +1,10 @@
 package com.williamcallahan.chatclient.ui;
 
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Position;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Style;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.color.Color;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.color.TerminalColor;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.join.VerticalJoinDecorator;
+import com.williamcallahan.tui4j.compat.lipgloss.color.Color;
+import com.williamcallahan.tui4j.compat.lipgloss.Join;
+import com.williamcallahan.tui4j.compat.lipgloss.Position;
+import com.williamcallahan.tui4j.compat.lipgloss.Style;
+import com.williamcallahan.tui4j.compat.lipgloss.color.TerminalColor;
 
 /**
  * Defines the visual theme and CRT-inspired color palette for the application.
@@ -75,7 +75,7 @@ public final class TuiTheme {
     }
 
     public static String joinVertical(Position pos, String... strs) {
-        return VerticalJoinDecorator.joinVertical(pos, strs);
+        return Join.joinVertical(pos, strs);
     }
 
     /** Centers text within a given width. */

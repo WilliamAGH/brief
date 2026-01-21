@@ -1,6 +1,6 @@
 package com.williamcallahan.chatclient.ui;
 
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Style;
+import com.williamcallahan.tui4j.compat.lipgloss.Style;
 
 import java.util.ArrayList;
 import java.util.List;

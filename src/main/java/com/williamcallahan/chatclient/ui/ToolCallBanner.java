@@ -1,8 +1,8 @@
 package com.williamcallahan.chatclient.ui;
 
 import com.williamcallahan.chatclient.service.tools.WeatherForecastTool;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Style;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.border.StandardBorder;
+import com.williamcallahan.tui4j.compat.lipgloss.border.StandardBorder;
+import com.williamcallahan.tui4j.compat.lipgloss.Style;
 
 final class ToolCallBanner {
 
