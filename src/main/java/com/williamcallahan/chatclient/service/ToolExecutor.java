@@ -293,7 +293,7 @@ public final class ToolExecutor {
 
     private ChatCompletionMessageFunctionToolCall buildToolCall(ToolCall tc) {
         return ChatCompletionMessageFunctionToolCall.builder()
-            .id(tc.id())
+            .id(tc.providerId())
             .function(
                 ChatCompletionMessageFunctionToolCall.Function.builder()
                     .name(tc.name())
