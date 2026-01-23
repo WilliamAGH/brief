@@ -81,9 +81,16 @@ final class SlashCommandPalette {
 
         if (KeyAliases.getKeyType(KeyAlias.KeyEnter) == key.type()) {
             if (!matches.isEmpty()) {
+                SlashCommand selected = matches.get(selectedIndex);
                 String trimmed = safeTrim(composer.value());
                 if (trimmed.equals("/") || (trimmed.startsWith("/") && !trimmed.contains(" "))) {
-                    fillCommand(composer, matches.get(selectedIndex).name(), false);
+                    // Command requires args: fill with trailing space, don't submit
+                    if (selected.requiresArguments()) {
+                        fillCommand(composer, selected.name(), true);
+                        close();
+                        return new PaletteUpdate(true, null, null);
+                    }
+                    fillCommand(composer, selected.name(), false);
                 }
             }
             close();
@@ -108,7 +115,16 @@ final class SlashCommandPalette {
             return new PaletteUpdate(true, null, null);
         }
         selectedIndex = Math.max(0, Math.min(index, matches.size() - 1));
-        String submit = matches.get(selectedIndex).name();
+        SlashCommand selected = matches.get(selectedIndex);
+
+        // Command requires args: fill composer with trailing space, don't submit
+        if (selected.requiresArguments()) {
+            fillCommand(composer, selected.name(), true);
+            close();
+            return new PaletteUpdate(true, null, null);
+        }
+
+        String submit = selected.name();
         close();
         return (submit == null || submit.isBlank())
             ? new PaletteUpdate(true, null, null)

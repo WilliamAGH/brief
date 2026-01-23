@@ -30,6 +30,22 @@ public final class PaletteOverlay {
         int innerHeight,
         int dividerRow
     ) {
+        return render(items, selectedIndex, title, searchQuery, null, innerWidth, innerHeight, dividerRow);
+    }
+
+    /**
+     * Renders items into an overlay box with custom help text.
+     */
+    public static Overlay render(
+        List<? extends PaletteItem> items,
+        int selectedIndex,
+        String title,
+        String searchQuery,
+        String helpText,
+        int innerWidth,
+        int innerHeight,
+        int dividerRow
+    ) {
         if (innerWidth < 20 || innerHeight < 10) return null;
 
         int total = items.size();
@@ -127,7 +143,8 @@ public final class PaletteOverlay {
         if (searchQuery != null && !searchQuery.isEmpty()) {
             searchPart = titleStyle.render(searchQuery) + "  ";
         }
-        String help = hintStyle.render("↑/↓  enter  esc  type to filter");
+        String defaultHelp = "↑/↓  enter  esc  type to filter";
+        String help = hintStyle.render(helpText != null ? helpText : defaultHelp);
         String footer = searchPart + help;
         box.add(
             borderStyle.render("│") +
