@@ -7,7 +7,7 @@ import com.williamcallahan.tui4j.compat.bubbletea.Message;
 import com.williamcallahan.tui4j.compat.bubbletea.UpdateResult;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
-import com.williamcallahan.tui4j.compat.bubbletea.KeyMsg;
+import com.williamcallahan.tui4j.compat.bubbletea.KeyPressMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
 import com.williamcallahan.tui4j.compat.bubbles.textarea.Textarea;
 
@@ -37,7 +37,7 @@ final class SlashCommandPalette {
         return new PaletteUpdate(true, null, null);
     }
 
-    PaletteUpdate update(KeyMsg key, Message rawMsg, Textarea composer, boolean waiting, List<SlashCommand> commands) {
+    PaletteUpdate update(KeyPressMessage key, Message rawMsg, Textarea composer, boolean waiting, List<SlashCommand> commands) {
         if (waiting) return new PaletteUpdate(false, null, null);
 
         if (!open) {
@@ -140,7 +140,7 @@ final class SlashCommandPalette {
         selectedIndex = Math.max(0, Math.min(selectedIndex, matchCount - 1));
     }
 
-    private static boolean isSlashTrigger(KeyMsg key) {
+    private static boolean isSlashTrigger(KeyPressMessage key) {
         if (key.type() != KeyType.KeyRunes) return false;
         char[] r = key.runes();
         return r != null && r.length == 1 && r[0] == '/';

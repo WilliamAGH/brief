@@ -2,7 +2,7 @@ package com.williamcallahan.chatclient.ui;
 
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
-import com.williamcallahan.tui4j.compat.bubbletea.KeyMsg;
+import com.williamcallahan.tui4j.compat.bubbletea.KeyPressMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
 
 import java.util.List;
@@ -47,7 +47,7 @@ final class ModelPalette {
             .toList();
     }
 
-    PaletteResult update(KeyMsg key) {
+    PaletteResult update(KeyPressMessage key) {
         if (!open) return new PaletteResult(false, null);
 
         if (key.type() == KeyType.keyESC) {

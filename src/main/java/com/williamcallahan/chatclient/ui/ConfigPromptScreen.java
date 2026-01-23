@@ -11,7 +11,7 @@ import com.williamcallahan.tui4j.compat.lipgloss.border.StandardBorder;
 import com.williamcallahan.tui4j.compat.lipgloss.Style;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
-import com.williamcallahan.tui4j.compat.bubbletea.KeyMsg;
+import com.williamcallahan.tui4j.compat.bubbletea.KeyPressMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
 import com.williamcallahan.tui4j.compat.bubbletea.QuitMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.WindowSizeMessage;
@@ -68,7 +68,7 @@ public abstract class ConfigPromptScreen implements Model {
             return UpdateResult.from(this);
         }
 
-        if (msg instanceof KeyMsg key) {
+        if (msg instanceof KeyPressMessage key) {
             if (KeyAliases.getKeyType(KeyAlias.KeyEnter) == key.type()) {
                 return onSubmit(textInput.value());
             }

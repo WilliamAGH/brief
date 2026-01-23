@@ -22,7 +22,7 @@ import com.williamcallahan.tui4j.compat.lipgloss.border.StandardBorder;
 import com.williamcallahan.tui4j.compat.lipgloss.Style;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
-import com.williamcallahan.tui4j.compat.bubbletea.KeyMsg;
+import com.williamcallahan.tui4j.compat.bubbletea.KeyPressMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.Key;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
 import com.williamcallahan.tui4j.compat.bubbletea.PasteMessage;
@@ -236,7 +236,11 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             return handlePaste(paste.content());
         }
 
-        if (msg instanceof KeyMsg key) {
+        if (ComposerNewlineDecider.shouldInsertNewline(msg)) {
+            return insertComposerNewline();
+        }
+
+        if (msg instanceof KeyPressMessage key) {
             if (KeyAliases.getKeyType(KeyAlias.KeyCtrlC) == key.type()) {
                 return UpdateResult.from(this, QuitMessage::new);
             }
@@ -308,16 +312,6 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
                 return UpdateResult.from(this);
             }
 
-            // Ctrl+J inserts a newline (standard terminal behavior)
-            if (KeyAliases.getKeyType(KeyAlias.KeyCtrlJ) == key.type()) {
-                return insertComposerNewline();
-            }
-
-            // Shift+Enter and Ctrl+Enter insert newlines (do NOT submit)
-            if (key.type() == KeyType.KeyShiftEnter || key.type() == KeyType.KeyCtrlEnter) {
-                return insertComposerNewline();
-            }
-
             if (KeyAliases.getKeyType(KeyAlias.KeyEnter) == key.type()) {
                 // Plain Enter submits
                 String text = resolveSubmitText();
@@ -348,7 +342,7 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
      */
     private UpdateResult<? extends Model> insertComposerNewline() {
         KeyType enterType = KeyAliases.getKeyType(KeyAlias.KeyEnter);
-        UpdateResult<Textarea> r = composer.update(new KeyMsg(new Key(enterType)));
+        UpdateResult<Textarea> r = composer.update(new KeyPressMessage(new Key(enterType)));
         return UpdateResult.from(this, r.command());
     }
 

@@ -5,7 +5,7 @@ import com.williamcallahan.tui4j.compat.bubbletea.Message;
 import com.williamcallahan.tui4j.compat.bubbletea.Model;
 import com.williamcallahan.tui4j.compat.bubbletea.Program;
 import com.williamcallahan.tui4j.compat.bubbletea.UpdateResult;
-import com.williamcallahan.tui4j.compat.bubbletea.KeyMsg;
+import com.williamcallahan.tui4j.compat.bubbletea.KeyPressMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
 
 /**
@@ -36,7 +36,7 @@ public class WelcomeScreen extends ConfigPromptScreen {
     @Override
     public UpdateResult<? extends Model> update(Message msg) {
         // Allow Esc to skip (continue without name) instead of quit
-        if (msg instanceof KeyMsg key && KeyType.keyESC == key.type()) {
+        if (msg instanceof KeyPressMessage key && KeyType.keyESC == key.type()) {
             return proceedToNextScreen(null);
         }
         return super.update(msg);
