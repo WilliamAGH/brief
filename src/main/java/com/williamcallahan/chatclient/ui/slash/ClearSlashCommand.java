@@ -1,9 +1,11 @@
 package com.williamcallahan.chatclient.ui.slash;
 
 public final class ClearSlashCommand {
+
     private ClearSlashCommand() {}
 
     public static final class Command implements SlashCommand {
+
         @Override
         public String name() {
             return "/clear";
@@ -16,7 +18,7 @@ public final class ClearSlashCommand {
 
         @Override
         public boolean matchesInvocation(String input) {
-            return input != null && input.equals(name());
+            return input != null && input.equalsIgnoreCase(name());
         }
 
         /** No-op; handled by ChatConversationScreen via model transition. */
@@ -26,4 +28,3 @@ public final class ClearSlashCommand {
         }
     }
 }
-

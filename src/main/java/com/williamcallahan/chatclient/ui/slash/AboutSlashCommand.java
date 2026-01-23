@@ -4,9 +4,11 @@ import com.williamcallahan.chatclient.AppInfo;
 
 /** /about output. */
 public final class AboutSlashCommand {
+
     private AboutSlashCommand() {}
 
     public static final class Command implements SlashCommand {
+
         @Override
         public String name() {
             return "/about";
@@ -19,7 +21,7 @@ public final class AboutSlashCommand {
 
         @Override
         public boolean matchesInvocation(String input) {
-            return input != null && input.equals(name());
+            return input != null && input.equalsIgnoreCase(name());
         }
 
         @Override
@@ -43,7 +45,8 @@ public final class AboutSlashCommand {
             Email: william@williamcallahan.com
             Twitter: https://x.com/WilliamCallahan
             LinkedIn: https://www.linkedin.com/in/williamacallahan/
-            """.formatted(AppInfo.VERSION).trim();
+            """.formatted(AppInfo.VERSION)
+                .trim();
         }
     }
 }
