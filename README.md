@@ -1,10 +1,15 @@
+[![Context7](src/main/resources/static/img/context7-badge.svg)](https://context7.com/williamagh/brief)
+[![DeepWiki](src/main/resources/static/img/deepwiki-badge.svg)](https://deepwiki.com/WilliamAGH/brief)
+
 # Brief
 
 A terminal ChatGPT client for fast, keyboard-first chat. Includes slash commands, tool execution, and support for OpenAI-compatible providers.
 
-![Brief screenshot](docs/assets/brief-screenshot-1.png)
+![Brief screenshot](src/main/resources/static/img/brief-screenshot-1.png)
 
-Built with [tui4j](https://github.com/WilliamAGH/tui4j) — a Java port of [Bubble Tea](https://github.com/charmbracelet/bubbletea).
+Built with [TUI4J](https://github.com/WilliamAGH/tui4j) — a Java port of [Bubble Tea](https://github.com/charmbracelet/bubbletea). Location features powered by [Apple Maps Java](https://github.com/WilliamAGH/apple-maps-java).
+
+![Apple Maps in Brief](src/main/resources/static/img/apple-maps-java-screenshot.png)
 
 ## Quick Start
 
