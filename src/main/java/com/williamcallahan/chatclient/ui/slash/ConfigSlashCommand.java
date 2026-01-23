@@ -26,6 +26,6 @@ public final class ConfigSlashCommand implements SlashCommand {
     @Override
     public String run(String input) {
         // Handled by ChatConversationScreen - transitions to ConfigEditorScreen
-        return null;
+        return "";
     }
 }
