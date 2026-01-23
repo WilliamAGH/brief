@@ -11,7 +11,9 @@ public final class SlashCommands {
     public static List<SlashCommand> defaults() {
         return List.of(
             new WeatherSlashCommand.Command(),
+            new LocateSlashCommand.Command(),
             new ModelSlashCommand(),
+            new ConfigSlashCommand(),
             new NewSlashCommand.Command(),
             new ClearSlashCommand.Command(),
             new AboutSlashCommand.Command(),

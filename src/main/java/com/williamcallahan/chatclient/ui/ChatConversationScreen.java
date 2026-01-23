@@ -7,11 +7,19 @@ import com.williamcallahan.chatclient.Config;
 import com.williamcallahan.chatclient.domain.ChatMessage;
 import com.williamcallahan.chatclient.domain.Conversation;
 import com.williamcallahan.chatclient.domain.Role;
+import com.williamcallahan.applemaps.AppleMaps;
+import com.williamcallahan.chatclient.service.AppleMapsService;
 import com.williamcallahan.chatclient.service.ChatCompletionService;
 import com.williamcallahan.chatclient.service.OpenAiService;
 import com.williamcallahan.chatclient.service.SummaryService;
 import com.williamcallahan.chatclient.service.ToolExecutor;
+import com.williamcallahan.chatclient.service.tools.GeocodeAddressTool;
+import com.williamcallahan.chatclient.service.tools.PlaceSearchTool;
+import com.williamcallahan.chatclient.service.tools.Tool;
 import com.williamcallahan.chatclient.service.tools.WeatherForecastTool;
+import com.williamcallahan.chatclient.ui.maps.PlacesOverlay;
+import com.williamcallahan.chatclient.ui.slash.ConfigSlashCommand;
+import com.williamcallahan.chatclient.ui.slash.LocateSlashCommand;
 import com.williamcallahan.chatclient.ui.slash.ModelSlashCommand;
 import com.williamcallahan.chatclient.ui.slash.SlashCommand;
 import com.williamcallahan.chatclient.ui.slash.SlashCommands;
@@ -76,6 +84,11 @@ public final class ChatConversationScreen
             new SlashLlmOverride(
                 WeatherSlashCommand::toUserRequest,
                 WeatherSlashCommand::toLlmPrompt
+            ),
+            "/locate",
+            new SlashLlmOverride(
+                LocateSlashCommand::toUserRequest,
+                LocateSlashCommand::toLlmPrompt
             )
         );
 
@@ -110,6 +123,8 @@ public final class ChatConversationScreen
     private final Textarea composer = new Textarea();
     private final SlashCommandPalette slashPalette = new SlashCommandPalette();
     private final ModelPalette modelPalette = new ModelPalette();
+    private final ConfigPalette configPalette = new ConfigPalette();
+    private final PlacesOverlay placesOverlay = new PlacesOverlay();
     private final boolean printToScrollback;
     private final boolean mouseSelectionEnabled;
     private final boolean showToolMessages;
@@ -126,6 +141,8 @@ public final class ChatConversationScreen
     private List<MouseTarget> mouseTargets = List.of();
     private PaletteOverlay.Layout slashOverlayLayout;
     private PaletteOverlay.Layout modelOverlayLayout;
+    private PaletteOverlay.Layout configOverlayLayout;
+    private PaletteOverlay.Layout placesOverlayLayout;
     private int innerLeft = 0;
     private int innerTop = 0;
 
@@ -170,7 +187,7 @@ public final class ChatConversationScreen
         this.chatCompletionService = new ChatCompletionService(openAiService);
         this.toolExecutor = new ToolExecutor(
             chatCompletionService,
-            List.of(new WeatherForecastTool())
+            buildTools(config)
         );
         this.summaryService = new SummaryService(chatCompletionService, config);
 
@@ -193,6 +210,21 @@ public final class ChatConversationScreen
         String mode = System.getenv("BRIEF_MOUSE");
         if (mode == null || mode.isBlank()) return "select";
         return mode;
+    }
+
+    private static List<Tool> buildTools(Config config) {
+        List<Tool> tools = new ArrayList<>();
+        tools.add(new WeatherForecastTool());
+
+        // Add Apple Maps tools if configured
+        if (AppleMapsService.isConfigured(config)) {
+            String token = config.resolveAppleMapsToken();
+            AppleMaps client = new AppleMaps(token);
+            tools.add(new PlaceSearchTool(client));
+            tools.add(new GeocodeAddressTool(client));
+        }
+
+        return tools;
     }
 
     @Override
@@ -251,8 +283,11 @@ public final class ChatConversationScreen
         UpdateResult<? extends Model> asyncResult = handleAsyncMessage(msg);
         if (asyncResult != null) return asyncResult;
 
-        // Handle pasted content - NEVER triggers submit, preserves line breaks
+        // Handle pasted content - check config palette first
         if (msg instanceof PasteMessage paste) {
+            if (configPalette.isEditing() && configPalette.handlePaste(paste.content())) {
+                return UpdateResult.from(this);
+            }
             return handlePaste(paste.content());
         }
 
@@ -317,8 +352,16 @@ public final class ChatConversationScreen
         if (KeyType.keyESC == key.type()) {
             return handleEscape();
         }
+        if (placesOverlay.isOpen()) {
+            UpdateResult<? extends Model> r = handlePlacesOverlayKey(key);
+            if (r != null) return r;
+        }
         if (modelPalette.isOpen()) {
             UpdateResult<? extends Model> r = handleModelPaletteKey(key);
+            if (r != null) return r;
+        }
+        if (configPalette.isOpen()) {
+            UpdateResult<? extends Model> r = handleConfigPaletteKey(key);
             if (r != null) return r;
         }
         if (
@@ -338,6 +381,14 @@ public final class ChatConversationScreen
     }
 
     private UpdateResult<? extends Model> handleEscape() {
+        if (placesOverlay.isOpen()) {
+            placesOverlay.close();
+            return UpdateResult.from(this);
+        }
+        if (configPalette.isOpen()) {
+            configPalette.close();
+            return UpdateResult.from(this);
+        }
         if (modelPalette.isOpen()) {
             modelPalette.close();
             return UpdateResult.from(this);
@@ -349,6 +400,33 @@ public final class ChatConversationScreen
         return UpdateResult.from(this, QuitMessage::new);
     }
 
+    private UpdateResult<? extends Model> handlePlacesOverlayKey(
+        KeyPressMessage key
+    ) {
+        PlacesOverlay.UpdateResult result = placesOverlay.update(key);
+        if (result.wasHandled()) {
+            // Handle search query from input mode
+            if (result.searchQuery() != null) {
+                return performPlacesSearch(result.searchQuery());
+            }
+
+            if (result.wasClosed()) {
+                if (result.selectedForContext() != null) {
+                    String placeContext = formatPlaceForContext(
+                        result.selectedForContext()
+                    );
+                    append(
+                        Role.SYSTEM,
+                        ChatMessage.Source.SYSTEM,
+                        placeContext
+                    );
+                }
+            }
+            return UpdateResult.from(this);
+        }
+        return null;
+    }
+
     private UpdateResult<? extends Model> handleModelPaletteKey(
         KeyPressMessage key
     ) {
@@ -358,6 +436,16 @@ public final class ChatConversationScreen
                 conversation.setDefaultModel(result.selectedModel());
                 config.setModel(result.selectedModel());
             }
+            return UpdateResult.from(this);
+        }
+        return null;
+    }
+
+    private UpdateResult<? extends Model> handleConfigPaletteKey(
+        KeyPressMessage key
+    ) {
+        ConfigPalette.PaletteResult result = configPalette.update(key);
+        if (result.handled()) {
             return UpdateResult.from(this);
         }
         return null;
@@ -516,6 +604,15 @@ public final class ChatConversationScreen
         int column = click.column() - innerLeft;
         int row = click.row() - innerTop;
 
+        if (placesOverlay.isOpen() && placesOverlayLayout != null) {
+            if (!placesOverlayLayout.contains(column, row)) {
+                placesOverlay.close();
+                return UpdateResult.from(this);
+            }
+            // Places overlay handles clicks via keyboard navigation only for now
+            return UpdateResult.from(this);
+        }
+
         if (modelPalette.isOpen() && modelOverlayLayout != null) {
             if (!modelOverlayLayout.contains(column, row)) {
                 modelPalette.close();
@@ -528,6 +625,19 @@ public final class ChatConversationScreen
                     conversation.setDefaultModel(result.selectedModel());
                     config.setModel(result.selectedModel());
                 }
+                return UpdateResult.from(this);
+            }
+            return UpdateResult.from(this);
+        }
+
+        if (configPalette.isOpen() && configOverlayLayout != null) {
+            if (!configOverlayLayout.contains(column, row)) {
+                configPalette.close();
+                return UpdateResult.from(this);
+            }
+            int index = configOverlayLayout.itemIndexAt(column, row);
+            if (index >= 0) {
+                configPalette.click(index);
                 return UpdateResult.from(this);
             }
             return UpdateResult.from(this);
@@ -742,18 +852,38 @@ public final class ChatConversationScreen
             innerHeight,
             dividerRow
         );
+        PaletteOverlay.Overlay configOverlay = configPalette.applyOverlay(
+            lines,
+            innerWidth,
+            innerHeight,
+            dividerRow
+        );
+        PaletteOverlay.Overlay placesOverlayRendered =
+            placesOverlay.applyOverlay(
+                lines,
+                innerWidth,
+                innerHeight,
+                dividerRow
+            );
         slashOverlayLayout = (slashOverlay == null)
             ? null
             : slashOverlay.layout();
         modelOverlayLayout = (modelOverlay == null)
             ? null
             : modelOverlay.layout();
+        configOverlayLayout = (configOverlay == null)
+            ? null
+            : configOverlay.layout();
+        placesOverlayLayout = (placesOverlayRendered == null)
+            ? null
+            : placesOverlayRendered.layout();
 
         mouseTargets = buildMouseTargets(
             statusRow,
             statusRowIndex,
             slashOverlay,
-            modelOverlay
+            modelOverlay,
+            configOverlay
         );
 
         while (lines.size() < innerHeight) {
@@ -775,12 +905,14 @@ public final class ChatConversationScreen
         String statusRow,
         int statusRowIndex,
         PaletteOverlay.Overlay slashOverlay,
-        PaletteOverlay.Overlay modelOverlay
+        PaletteOverlay.Overlay modelOverlay,
+        PaletteOverlay.Overlay configOverlay
     ) {
         List<MouseTarget> targets = new ArrayList<>();
         addToolbarTargets(statusRow, statusRowIndex, targets);
         addOverlayTargets("slash", slashOverlay, targets);
         addOverlayTargets("model", modelOverlay, targets);
+        addOverlayTargets("config", configOverlay, targets);
         return targets;
     }
 
@@ -849,6 +981,23 @@ public final class ChatConversationScreen
             if (sc instanceof ModelSlashCommand) {
                 composer.reset();
                 return openModelPalette();
+            }
+
+            if (sc instanceof ConfigSlashCommand) {
+                composer.reset();
+                configPalette.open(config);
+                return UpdateResult.from(this);
+            }
+
+            // /locate: without args opens interactive overlay, with args goes to LLM
+            if (sc instanceof LocateSlashCommand.Command) {
+                String locateQuery = parseLocateQuery(text);
+                if (locateQuery.isBlank()) {
+                    // No args: open interactive input overlay
+                    composer.reset();
+                    return openPlacesInputOverlay();
+                }
+                // Has args: fall through to LLM override
             }
 
             SlashLlmOverride override = (sc == null)
@@ -920,6 +1069,58 @@ public final class ChatConversationScreen
                 )
             );
         }
+    }
+
+    /** Opens the interactive places overlay in input mode. */
+    private UpdateResult<? extends Model> openPlacesInputOverlay() {
+        if (!AppleMapsService.isConfigured(config)) {
+            return UpdateResult.from(this, () ->
+                new LocalDisplayMessage(
+                    "Apple Maps not configured. Set APPLE_MAPS_TOKEN environment variable."
+                )
+            );
+        }
+        placesOverlay.openForInput();
+        return UpdateResult.from(this);
+    }
+
+    /** Performs a places search and displays results in the overlay. */
+    private UpdateResult<? extends Model> performPlacesSearch(String query) {
+        if (query == null || query.isBlank()) {
+            return UpdateResult.from(this);
+        }
+
+        try {
+            AppleMapsService service = new AppleMapsService(config);
+            List<AppleMapsService.PlaceResult> results = service.search(query);
+            if (results.isEmpty()) {
+                placesOverlay.close();
+                return UpdateResult.from(this, () ->
+                    new LocalDisplayMessage("No places found for \"" + query + "\"")
+                );
+            }
+            placesOverlay.open(query, results);
+            return UpdateResult.from(this);
+        } catch (Exception e) {
+            placesOverlay.close();
+            String error = e.getMessage();
+            return UpdateResult.from(this, () ->
+                new LocalDisplayMessage(
+                    "Search failed: " + (error == null ? e.getClass().getSimpleName() : error)
+                )
+            );
+        }
+    }
+
+    private static String parseLocateQuery(String input) {
+        if (input == null) return "";
+        String trimmed = input.trim();
+        if (!trimmed.toLowerCase().startsWith("/locate")) return "";
+        String rest = trimmed.substring("/locate".length()).trim();
+        if (rest.length() >= 2 && rest.startsWith("\"") && rest.endsWith("\"")) {
+            rest = rest.substring(1, rest.length() - 1);
+        }
+        return rest;
     }
 
     private Conversation newConversationLikeCurrent() {
@@ -1038,6 +1239,33 @@ public final class ChatConversationScreen
             "\nMODEL=" +
             conversation.getDefaultModel()
         );
+    }
+
+    private String formatPlaceForContext(AppleMapsService.PlaceResult place) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Selected place from Apple Maps:\n");
+        sb.append("Name: ").append(place.name()).append("\n");
+        if (!place.category().isBlank()) {
+            sb.append("Category: ").append(place.category()).append("\n");
+        }
+        if (!place.address().isBlank()) {
+            sb.append("Address: ").append(place.address()).append("\n");
+        }
+        if (place.hasCoordinates()) {
+            sb
+                .append("Coordinates: ")
+                .append(place.latitude())
+                .append(", ")
+                .append(place.longitude())
+                .append("\n");
+        }
+        if (place.phone() != null && !place.phone().isBlank()) {
+            sb.append("Phone: ").append(place.phone()).append("\n");
+        }
+        if (place.url() != null && !place.url().isBlank()) {
+            sb.append("Website: ").append(place.url()).append("\n");
+        }
+        return sb.toString().trim();
     }
 
     private String renderTitleBorder(int width) {
