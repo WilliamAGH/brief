@@ -107,7 +107,7 @@ public final class PaletteOverlay {
         } else {
             for (int i = 0; i < maxItems; i++) {
                 int idx = scrollTop + i;
-                PaletteItem item = (idx >= 0 && idx < total)
+                PaletteItem item = (idx < total)
                     ? items.get(idx)
                     : null;
 
