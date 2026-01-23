@@ -139,8 +139,10 @@ public final class SummaryService {
         }
 
         String textToSummarize = extractMessagesForSummary(messages, summarizeStart, summarizeEnd);
+        int sourceTokens = TokenCounter.estimateTokens(textToSummarize);
         int tokensToFree = reserveTokens - remaining + MIN_SUMMARY_TOKENS;
-        int targetTokens = Math.max(MIN_SUMMARY_TOKENS, TokenCounter.estimateTokens(textToSummarize) - tokensToFree);
+        int desiredTokens = Math.max(MIN_SUMMARY_TOKENS, sourceTokens - tokensToFree);
+        int targetTokens = Math.min(sourceTokens, desiredTokens);
 
         SummarizeResult result = summarizeWithFallback(textToSummarize, targetTokens, "conversation history");
 
