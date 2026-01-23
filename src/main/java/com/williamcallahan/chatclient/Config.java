@@ -38,8 +38,10 @@ public final class Config {
     public String resolveApiKey()  { return resolve("OPENAI_API_KEY", "openai.api_key"); }
     public String resolveBaseUrl() { return resolve("OPENAI_BASE_URL", "openai.base_url"); }
     public String resolveModel()   { return resolve("LLM_MODEL", "model"); }
+    public String resolveAppleMapsToken() { return resolve("APPLE_MAPS_TOKEN", "apple_maps.token"); }
 
     public boolean hasResolvedApiKey() { return resolveApiKey() != null; }
+    public boolean hasAppleMapsToken() { return resolveAppleMapsToken() != null; }
 
     private String resolve(String envVar, String propKey) {
         String env = System.getenv(envVar);
@@ -70,6 +72,7 @@ public final class Config {
     public void setBaseUrl(String v) { set("openai.base_url", v); }
     public void setModel(String v)   { set("model", v); }
     public void setUserName(String v){ set("user.name", v); }
+    public void setAppleMapsToken(String v) { set("apple_maps.token", v); }
 
     private void set(String key, String value) {
         props.setProperty(key, value == null ? "" : value.trim());

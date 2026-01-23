@@ -50,6 +50,7 @@ dependencies {
         implementation("com.williamcallahan:tui4j:$tui4jVersion")
     }
     implementation("com.openai:openai-java:4.11.0")
+    implementation("com.williamcallahan:apple-maps-java:0.1.4")
     implementation(platform("com.fasterxml.jackson:jackson-bom:2.18.2"))
     implementation("com.fasterxml.jackson.core:jackson-databind")
     compileOnly("org.projectlombok:lombok:edge-SNAPSHOT")
