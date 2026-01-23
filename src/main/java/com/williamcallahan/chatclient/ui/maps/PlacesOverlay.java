@@ -146,7 +146,9 @@ public final class PlacesOverlay {
                 return UpdateResult.handled();
             }
             case KeyPgDown -> {
-                selectedIndex = Math.min(places.size() - 1, selectedIndex + 5);
+                if (!places.isEmpty()) {
+                    selectedIndex = Math.min(places.size() - 1, selectedIndex + 5);
+                }
                 return UpdateResult.handled();
             }
             case KeyHome -> {
@@ -154,7 +156,9 @@ public final class PlacesOverlay {
                 return UpdateResult.handled();
             }
             case KeyEnd -> {
-                selectedIndex = Math.max(0, places.size() - 1);
+                if (!places.isEmpty()) {
+                    selectedIndex = places.size() - 1;
+                }
                 return UpdateResult.handled();
             }
             default -> {
