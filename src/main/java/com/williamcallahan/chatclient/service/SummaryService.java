@@ -30,7 +30,6 @@ public final class SummaryService {
 
     // Summarization tuning
     private static final double SUMMARY_WORD_RATIO = 0.85;
-    private static final String SUMMARY_MODEL = "gpt-4o-mini";
     private static final int MIN_SUMMARY_TOKENS = 500;
     private static final int MESSAGES_TO_PRESERVE = 4;
     private static final int CHARS_PER_TOKEN = 4;
@@ -221,7 +220,8 @@ public final class SummaryService {
             """.formatted(context, targetWords, text);
 
         try {
-            String summary = completionService.complete(prompt, SUMMARY_MODEL);
+            String model = config.resolveModel();
+            String summary = completionService.complete(prompt, model);
             return new SummarizeResult(summary, false);
         } catch (RuntimeException e) {
             // LLM unavailable - fall back to simple truncation
