@@ -2,6 +2,8 @@ package com.williamcallahan.chatclient.service;
 
 import com.williamcallahan.chatclient.domain.Conversation;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,18 +32,25 @@ public final class ContextTracker {
         Map.entry("mistral", 32_768)
     );
 
+    /** Keys sorted by length descending for longest-match-first lookup. */
+    private static final List<Map.Entry<String, Integer>> SORTED_ENTRIES =
+        MODEL_CONTEXT_SIZES.entrySet().stream()
+            .sorted(Comparator.comparingInt((Map.Entry<String, Integer> e) -> e.getKey().length()).reversed())
+            .toList();
+
     private static final int DEFAULT_CONTEXT_SIZE = 8_192;
 
     private ContextTracker() {}
 
     /**
      * Returns the context window size for a model.
-     * Uses partial matching on model name (case-insensitive).
+     * Uses partial matching (case-insensitive), checking longest keys first
+     * to ensure specific model names take precedence over generic ones.
      */
     public static int getContextSize(String model) {
         if (model == null || model.isBlank()) return DEFAULT_CONTEXT_SIZE;
         String lowerModel = model.toLowerCase();
-        return MODEL_CONTEXT_SIZES.entrySet().stream()
+        return SORTED_ENTRIES.stream()
             .filter(e -> lowerModel.contains(e.getKey()))
             .findFirst()
             .map(Map.Entry::getValue)
