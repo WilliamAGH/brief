@@ -90,7 +90,8 @@ public final class WeatherSlashCommand {
     private static ParsedArgs parseArgs(String input) {
         if (input == null) return new ParsedArgs("", false);
         String t = input.trim();
-        if (!t.startsWith("/weather")) return new ParsedArgs("", false);
+        String lower = t.toLowerCase();
+        if (!lower.startsWith("/weather")) return new ParsedArgs("", false);
 
         String rest = t.substring("/weather".length()).trim();
         if (rest.isEmpty()) return new ParsedArgs("", false);
