@@ -45,4 +45,10 @@ Commands: `make run` | `make build` | `make clean`
 
 ---
 
+## More from William Callahan
+
+- 
+
 Made by [William Callahan](https://williamcallahan.com) · [Repo](https://github.com/WilliamAGH/brief)
+
+[Other projects I've made](https://williamcallahan.com/projects)
