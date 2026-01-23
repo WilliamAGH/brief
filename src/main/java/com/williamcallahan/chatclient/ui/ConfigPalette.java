@@ -104,7 +104,7 @@ final class ConfigPalette {
         // For sensitive items, start empty; for others, pre-fill with current value
         if (!item.isSensitive()) {
             String current = item.valueSupplier().get();
-            if (current != null && !current.equals("(not set)")) {
+            if (current != null && !current.isBlank()) {
                 editBuffer.append(current);
             }
         }
