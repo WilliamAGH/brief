@@ -1,40 +1,53 @@
 package com.williamcallahan.chatclient.ui;
 
+import static com.williamcallahan.tui4j.compat.bubbletea.Command.batch;
+import static com.williamcallahan.tui4j.compat.bubbletea.Command.setWindowTitle;
+
 import com.williamcallahan.chatclient.Config;
 import com.williamcallahan.chatclient.domain.ChatMessage;
 import com.williamcallahan.chatclient.domain.Conversation;
 import com.williamcallahan.chatclient.domain.Role;
+import com.williamcallahan.applemaps.AppleMaps;
+import com.williamcallahan.chatclient.service.AppleMapsService;
+import com.williamcallahan.chatclient.service.ChatCompletionService;
+import com.williamcallahan.chatclient.service.OpenAiService;
+import com.williamcallahan.chatclient.service.SummaryService;
+import com.williamcallahan.chatclient.service.ToolExecutor;
+import com.williamcallahan.chatclient.service.tools.GeocodeAddressTool;
+import com.williamcallahan.chatclient.service.tools.PlaceSearchTool;
+import com.williamcallahan.chatclient.service.tools.Tool;
+import com.williamcallahan.chatclient.service.tools.WeatherForecastTool;
+import com.williamcallahan.chatclient.ui.maps.PlacesOverlay;
+import com.williamcallahan.chatclient.ui.slash.ConfigSlashCommand;
+import com.williamcallahan.chatclient.ui.slash.LocateSlashCommand;
 import com.williamcallahan.chatclient.ui.slash.ModelSlashCommand;
 import com.williamcallahan.chatclient.ui.slash.SlashCommand;
 import com.williamcallahan.chatclient.ui.slash.SlashCommands;
 import com.williamcallahan.chatclient.ui.slash.WeatherSlashCommand;
-import com.williamcallahan.chatclient.service.ChatCompletionService;
-import com.williamcallahan.chatclient.service.OpenAiService;
-import com.williamcallahan.chatclient.service.ToolExecutor;
-import com.williamcallahan.chatclient.service.tools.WeatherForecastTool;
+import com.williamcallahan.tui4j.ansi.TextWrapper;
+import com.williamcallahan.tui4j.compat.bubbles.spinner.Spinner;
+import com.williamcallahan.tui4j.compat.bubbles.spinner.SpinnerType;
+import com.williamcallahan.tui4j.compat.bubbles.spinner.TickMessage;
+import com.williamcallahan.tui4j.compat.bubbles.textarea.Textarea;
 import com.williamcallahan.tui4j.compat.bubbletea.Command;
+import com.williamcallahan.tui4j.compat.bubbletea.KeyPressMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.Message;
 import com.williamcallahan.tui4j.compat.bubbletea.Model;
+import com.williamcallahan.tui4j.compat.bubbletea.PasteMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.QuitMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.UpdateResult;
-import com.williamcallahan.tui4j.ansi.TextWrapper;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Style;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.border.StandardBorder;
+import com.williamcallahan.tui4j.compat.bubbletea.WindowSizeMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.input.MouseButton;
+import com.williamcallahan.tui4j.compat.bubbletea.input.MouseMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.Key;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
-import com.williamcallahan.tui4j.compat.bubbletea.message.KeyPressMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.message.QuitMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.message.WindowSizeMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.input.MouseButton;
+import com.williamcallahan.tui4j.compat.lipgloss.Style;
+import com.williamcallahan.tui4j.compat.lipgloss.border.StandardBorder;
 import com.williamcallahan.tui4j.input.MouseClickMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.input.MouseMessage;
 import com.williamcallahan.tui4j.input.MouseTarget;
 import com.williamcallahan.tui4j.input.MouseTargetProvider;
-import com.williamcallahan.tui4j.compat.bubbletea.bubbles.spinner.Spinner;
-import com.williamcallahan.tui4j.compat.bubbletea.bubbles.spinner.TickMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.bubbles.spinner.SpinnerType;
-import com.williamcallahan.tui4j.compat.bubbletea.bubbles.textinput.TextInput;
-
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -44,14 +57,13 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 
-import static com.williamcallahan.tui4j.compat.bubbletea.Command.batch;
-import static com.williamcallahan.tui4j.compat.bubbletea.Command.setWindowTitle;
-
 /**
  * Main chat interface providing a conversation view, input composer, and slash commands.
  * Implements a CRT-style green terminal aesthetic.
  */
-public final class ChatConversationScreen implements Model, MouseTargetProvider {
+public final class ChatConversationScreen
+    implements Model, MouseTargetProvider
+{
 
     private record SlashLlmOverride(
         Function<String, String> userText,
@@ -66,16 +78,38 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         }
     }
 
-    private static final Map<String, SlashLlmOverride> SLASH_LLM_OVERRIDES = Map.of(
-        "/weather",
-        new SlashLlmOverride(WeatherSlashCommand::toUserRequest, WeatherSlashCommand::toLlmPrompt)
-    );
+    private static final Map<String, SlashLlmOverride> SLASH_LLM_OVERRIDES =
+        Map.of(
+            "/weather",
+            new SlashLlmOverride(
+                WeatherSlashCommand::toUserRequest,
+                WeatherSlashCommand::toLlmPrompt
+            ),
+            "/locate",
+            new SlashLlmOverride(
+                LocateSlashCommand::toUserRequest,
+                LocateSlashCommand::toLlmPrompt
+            )
+        );
 
     private record AssistantReplyMessage(String text) implements Message {}
+
     private record LocalDisplayMessage(String text) implements Message {}
+
     private record SystemContextMessage(String text) implements Message {}
-    private record HistoryRender(List<String> visibleStyled, List<String> visiblePlain,
-                                 List<String> allPlain, int windowStartIndex) {}
+
+    /** Error from LLM call - displayed to user but not persisted to conversation. */
+    private record LlmErrorMessage(
+        String text,
+        Throwable cause
+    ) implements Message {}
+
+    private record HistoryRender(
+        List<String> visibleStyled,
+        List<String> visiblePlain,
+        List<String> allPlain,
+        int windowStartIndex
+    ) {}
 
     private final Conversation conversation;
     private final String userName;
@@ -84,10 +118,13 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
     private final OpenAiService openAiService;
     private final ChatCompletionService chatCompletionService;
     private final ToolExecutor toolExecutor;
+    private final SummaryService summaryService;
     private final List<SlashCommand> slashCommands = SlashCommands.defaults();
-    private final TextInput composer = new TextInput();
+    private final Textarea composer = new Textarea();
     private final SlashCommandPalette slashPalette = new SlashCommandPalette();
     private final ModelPalette modelPalette = new ModelPalette();
+    private final ConfigPalette configPalette = new ConfigPalette();
+    private final PlacesOverlay placesOverlay = new PlacesOverlay();
     private final boolean printToScrollback;
     private final boolean mouseSelectionEnabled;
     private final boolean showToolMessages;
@@ -95,13 +132,17 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
 
     private int width = 80;
     private int height = 24;
+    private static final int MAX_COMPOSER_LINES = 6;
 
     private boolean waiting = false;
     private final HistoryViewport historyViewport = new HistoryViewport();
-    private final MouseSelectionController mouseSelection = new MouseSelectionController();
+    private final MouseSelectionController mouseSelection =
+        new MouseSelectionController();
     private List<MouseTarget> mouseTargets = List.of();
     private PaletteOverlay.Layout slashOverlayLayout;
     private PaletteOverlay.Layout modelOverlayLayout;
+    private PaletteOverlay.Layout configOverlayLayout;
+    private PaletteOverlay.Layout placesOverlayLayout;
     private int innerLeft = 0;
     private int innerTop = 0;
 
@@ -110,26 +151,53 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
 
     private Spinner spinner = new Spinner(SpinnerType.DOT);
 
-    public ChatConversationScreen(String userName, Conversation conversation, Config config,
-                                  int width, int height, boolean needsModelSelection) {
-        this.userName = (userName == null || userName.isBlank()) ? "You" : userName.trim();
+    // Paste handling state
+    private record PastedContent(
+        int index,
+        String displayText,
+        String actualText
+    ) {}
+
+    private final List<PastedContent> pastedContents = new ArrayList<>();
+    private int pasteCounter = 0;
+
+    public ChatConversationScreen(
+        String userName,
+        Conversation conversation,
+        Config config,
+        int width,
+        int height,
+        boolean needsModelSelection
+    ) {
+        this.userName = (userName == null || userName.isBlank())
+            ? "You"
+            : userName.trim();
         this.conversation = conversation;
         this.config = config;
         this.width = Math.max(40, width);
         this.height = Math.max(12, height);
         this.needsModelSelection = needsModelSelection;
         this.printToScrollback = "1".equals(System.getenv("BRIEF_SCROLLBACK"));
-        this.mouseSelectionEnabled = "select".equalsIgnoreCase(resolveMouseMode());
+        this.mouseSelectionEnabled = "select".equalsIgnoreCase(
+            resolveMouseMode()
+        );
         this.showToolMessages = "1".equals(System.getenv("BRIEF_SHOW_TOOLS"));
 
         this.openAiService = new OpenAiService(config);
         this.chatCompletionService = new ChatCompletionService(openAiService);
-        this.toolExecutor = new ToolExecutor(chatCompletionService, List.of(new WeatherForecastTool()));
+        this.toolExecutor = new ToolExecutor(
+            chatCompletionService,
+            buildTools(config)
+        );
+        this.summaryService = new SummaryService(chatCompletionService, config);
 
+        // Configure Textarea for multi-line input
         composer.setPrompt("> ");
         composer.setPlaceholder("Ask me anything...");
-        composer.setCharLimit(4000);
-        composer.setWidth(this.width - 6);
+        composer.setShowLineNumbers(false);
+        composer.setEndOfBufferCharacter(' ');
+        composer.setMaxHeight(MAX_COMPOSER_LINES);
+        composer.setWidth(Math.max(20, this.width - 8));
         composer.focus();
     }
 
@@ -142,6 +210,21 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         String mode = System.getenv("BRIEF_MOUSE");
         if (mode == null || mode.isBlank()) return "select";
         return mode;
+    }
+
+    private static List<Tool> buildTools(Config config) {
+        List<Tool> tools = new ArrayList<>();
+        tools.add(new WeatherForecastTool());
+
+        // Add Apple Maps tools if configured
+        if (AppleMapsService.isConfigured(config)) {
+            String token = config.resolveAppleMapsToken();
+            AppleMaps client = new AppleMaps(token);
+            tools.add(new PlaceSearchTool(client));
+            tools.add(new GeocodeAddressTool(client));
+        }
+
+        return tools;
     }
 
     @Override
@@ -158,7 +241,7 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         if (msg instanceof WindowSizeMessage w) {
             width = Math.max(40, w.width());
             height = Math.max(12, w.height());
-            composer.setWidth(Math.max(20, width - 6));
+            composer.setWidth(Math.max(20, width - 8));
 
             if (needsModelSelection) {
                 needsModelSelection = false;
@@ -197,118 +280,320 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             return UpdateResult.from(this, r.command());
         }
 
-        if (msg instanceof AssistantReplyMessage reply) {
-            append(Role.ASSISTANT, ChatMessage.Source.LLM_OUTPUT, reply.text());
-            waiting = false;
-            historyViewport.follow();
-            return UpdateResult.from(this, maybePrintToScrollback("Assistant", reply.text()));
+        UpdateResult<? extends Model> asyncResult = handleAsyncMessage(msg);
+        if (asyncResult != null) return asyncResult;
+
+        // Handle pasted content - check config palette first
+        if (msg instanceof PasteMessage paste) {
+            if (configPalette.isEditing() && configPalette.handlePaste(paste.content())) {
+                return UpdateResult.from(this);
+            }
+            return handlePaste(paste.content());
         }
 
-        if (msg instanceof LocalDisplayMessage reply) {
-            waiting = false;
-            historyViewport.follow();
-            return UpdateResult.from(this, maybePrintToScrollback("", reply.text()));
-        }
-
-        if (msg instanceof SystemContextMessage reply) {
-            append(Role.SYSTEM, ChatMessage.Source.SYSTEM, reply.text());
-            waiting = false;
-            historyViewport.follow();
-            return UpdateResult.from(this, maybePrintToScrollback("", reply.text()));
+        if (ComposerNewlineDecider.shouldInsertNewline(msg)) {
+            return insertComposerNewline();
         }
 
         if (msg instanceof KeyPressMessage key) {
-            if (KeyAliases.getKeyType(KeyAlias.KeyCtrlC) == key.type()) {
-                return UpdateResult.from(this, QuitMessage::new);
-            }
-
-            if (KeyType.keyESC == key.type()) {
-                if (modelPalette.isOpen()) {
-                    modelPalette.close();
-                    return UpdateResult.from(this);
-                }
-                if (slashPalette.isOpen()) {
-                    slashPalette.close();
-                    return UpdateResult.from(this);
-                }
-                return UpdateResult.from(this, QuitMessage::new);
-            }
-
-            if (modelPalette.isOpen()) {
-                ModelPalette.PaletteResult result = modelPalette.update(key);
-                if (result.handled()) {
-                    if (result.selectedModel() != null) {
-                        conversation.setDefaultModel(result.selectedModel());
-                        config.setModel(result.selectedModel());
-                    }
-                    return UpdateResult.from(this);
-                }
-            }
-
-            if (slashPalette.isOpen() || (!waiting && key.type() == KeyType.KeyRunes)) {
-                SlashCommandPalette.PaletteUpdate pu = slashPalette.update(key, msg, composer, waiting, slashCommands);
-                if (pu.handled()) {
-                    UpdateResult<? extends Model> result = handleSlashPaletteUpdate(pu);
-                    if (result != null) return result;
-                }
-            }
-
-            if (key.type() == KeyType.KeyShiftUp) {
-                historyViewport.scrollUp(1);
-                return UpdateResult.from(this);
-            }
-            if (key.type() == KeyType.KeyShiftDown) {
-                historyViewport.scrollDown(1);
-                return UpdateResult.from(this);
-            }
-
-            if (key.type() == KeyType.KeyShiftLeft) {
-                historyViewport.top();
-                return UpdateResult.from(this);
-            }
-            if (key.type() == KeyType.KeyShiftRight) {
-                historyViewport.follow();
-                return UpdateResult.from(this);
-            }
-
-            if (key.type() == KeyType.KeyHome || key.type() == KeyType.KeyCtrlHome) {
-                historyViewport.top();
-                return UpdateResult.from(this);
-            }
-
-            if (key.type() == KeyType.KeyPgUp) {
-                historyViewport.scrollUp(5);
-                return UpdateResult.from(this);
-            }
-            if (key.type() == KeyType.KeyPgDown) {
-                historyViewport.scrollDown(5);
-                return UpdateResult.from(this);
-            }
-            if (key.type() == KeyType.KeyEnd) {
-                historyViewport.follow();
-                return UpdateResult.from(this);
-            }
-
-            if (KeyAliases.getKeyType(KeyAlias.KeyEnter) == key.type()) {
-                String text = composer.value().trim();
-                if (text.isEmpty() || waiting) return UpdateResult.from(this);
-
-                long now = System.currentTimeMillis();
-                if (text.equals(lastEnterText) && (now - lastEnterAtMs) < 1000) {
-                    composer.reset();
-                    return UpdateResult.from(this);
-                }
-                lastEnterText = text;
-                lastEnterAtMs = now;
-                return submitUserText(text);
-            }
+            UpdateResult<? extends Model> keyResult = handleKeyPress(key, msg);
+            if (keyResult != null) return keyResult;
         }
 
         UpdateResult<? extends Model> inputUpdate = composer.update(msg);
         return UpdateResult.from(this, inputUpdate.command());
     }
 
-    private UpdateResult<? extends Model> handleMouseClick(MouseClickMessage click) {
+    private UpdateResult<? extends Model> handleAsyncMessage(Message msg) {
+        if (msg instanceof AssistantReplyMessage reply) {
+            append(Role.ASSISTANT, ChatMessage.Source.LLM_OUTPUT, reply.text());
+            waiting = false;
+            historyViewport.follow();
+            return UpdateResult.from(
+                this,
+                maybePrintToScrollback("Assistant", reply.text())
+            );
+        }
+        if (msg instanceof LocalDisplayMessage reply) {
+            waiting = false;
+            historyViewport.follow();
+            return UpdateResult.from(
+                this,
+                maybePrintToScrollback("", reply.text())
+            );
+        }
+        if (msg instanceof LlmErrorMessage error) {
+            waiting = false;
+            historyViewport.follow();
+            return UpdateResult.from(
+                this,
+                maybePrintToScrollback("Error", error.text())
+            );
+        }
+        if (msg instanceof SystemContextMessage reply) {
+            append(Role.SYSTEM, ChatMessage.Source.SYSTEM, reply.text());
+            waiting = false;
+            historyViewport.follow();
+            return UpdateResult.from(
+                this,
+                maybePrintToScrollback("", reply.text())
+            );
+        }
+        return null;
+    }
+
+    private UpdateResult<? extends Model> handleKeyPress(
+        KeyPressMessage key,
+        Message msg
+    ) {
+        if (KeyAliases.getKeyType(KeyAlias.KeyCtrlC) == key.type()) {
+            return UpdateResult.from(this, QuitMessage::new);
+        }
+        if (KeyType.keyESC == key.type()) {
+            return handleEscape();
+        }
+        if (placesOverlay.isOpen()) {
+            UpdateResult<? extends Model> r = handlePlacesOverlayKey(key);
+            if (r != null) return r;
+        }
+        if (modelPalette.isOpen()) {
+            UpdateResult<? extends Model> r = handleModelPaletteKey(key);
+            if (r != null) return r;
+        }
+        if (configPalette.isOpen()) {
+            UpdateResult<? extends Model> r = handleConfigPaletteKey(key);
+            if (r != null) return r;
+        }
+        if (
+            slashPalette.isOpen() ||
+            (!waiting && key.type() == KeyType.KeyRunes)
+        ) {
+            UpdateResult<? extends Model> r = handleSlashPaletteKey(key, msg);
+            if (r != null) return r;
+        }
+        UpdateResult<? extends Model> navResult = handleNavigationKey(key);
+        if (navResult != null) return navResult;
+
+        if (KeyAliases.getKeyType(KeyAlias.KeyEnter) == key.type()) {
+            return handleEnterKey();
+        }
+        return null;
+    }
+
+    private UpdateResult<? extends Model> handleEscape() {
+        if (placesOverlay.isOpen()) {
+            placesOverlay.close();
+            return UpdateResult.from(this);
+        }
+        if (configPalette.isOpen()) {
+            configPalette.close();
+            return UpdateResult.from(this);
+        }
+        if (modelPalette.isOpen()) {
+            modelPalette.close();
+            return UpdateResult.from(this);
+        }
+        if (slashPalette.isOpen()) {
+            slashPalette.close();
+            return UpdateResult.from(this);
+        }
+        return UpdateResult.from(this, QuitMessage::new);
+    }
+
+    private UpdateResult<? extends Model> handlePlacesOverlayKey(
+        KeyPressMessage key
+    ) {
+        PlacesOverlay.UpdateResult result = placesOverlay.update(key);
+        if (result.wasHandled()) {
+            // Handle search query from input mode
+            if (result.searchQuery() != null) {
+                return performPlacesSearch(result.searchQuery());
+            }
+
+            if (result.wasClosed()) {
+                if (result.selectedForContext() != null) {
+                    String placeContext = formatPlaceForContext(
+                        result.selectedForContext()
+                    );
+                    append(
+                        Role.SYSTEM,
+                        ChatMessage.Source.SYSTEM,
+                        placeContext
+                    );
+                }
+            }
+            return UpdateResult.from(this);
+        }
+        return null;
+    }
+
+    private UpdateResult<? extends Model> handleModelPaletteKey(
+        KeyPressMessage key
+    ) {
+        ModelPalette.PaletteResult result = modelPalette.update(key);
+        if (result.handled()) {
+            if (result.selectedModel() != null) {
+                conversation.setDefaultModel(result.selectedModel());
+                config.setModel(result.selectedModel());
+            }
+            return UpdateResult.from(this);
+        }
+        return null;
+    }
+
+    private UpdateResult<? extends Model> handleConfigPaletteKey(
+        KeyPressMessage key
+    ) {
+        ConfigPalette.PaletteResult result = configPalette.update(key);
+        if (result.handled()) {
+            return UpdateResult.from(this);
+        }
+        return null;
+    }
+
+    private UpdateResult<? extends Model> handleSlashPaletteKey(
+        KeyPressMessage key,
+        Message msg
+    ) {
+        SlashCommandPalette.PaletteUpdate pu = slashPalette.update(
+            key,
+            msg,
+            composer,
+            waiting,
+            slashCommands
+        );
+        if (pu.handled()) {
+            return handleSlashPaletteUpdate(pu);
+        }
+        return null;
+    }
+
+    private UpdateResult<? extends Model> handleNavigationKey(
+        KeyPressMessage key
+    ) {
+        return switch (key.type()) {
+            case KeyShiftUp -> {
+                historyViewport.scrollUp(1);
+                yield UpdateResult.from(this);
+            }
+            case KeyShiftDown -> {
+                historyViewport.scrollDown(1);
+                yield UpdateResult.from(this);
+            }
+            case KeyShiftLeft -> {
+                historyViewport.top();
+                yield UpdateResult.from(this);
+            }
+            case KeyShiftRight -> {
+                historyViewport.follow();
+                yield UpdateResult.from(this);
+            }
+            case KeyHome, KeyCtrlHome -> {
+                historyViewport.top();
+                yield UpdateResult.from(this);
+            }
+            case KeyPgUp -> {
+                historyViewport.scrollUp(5);
+                yield UpdateResult.from(this);
+            }
+            case KeyPgDown -> {
+                historyViewport.scrollDown(5);
+                yield UpdateResult.from(this);
+            }
+            case KeyEnd -> {
+                historyViewport.follow();
+                yield UpdateResult.from(this);
+            }
+            default -> null;
+        };
+    }
+
+    private UpdateResult<? extends Model> handleEnterKey() {
+        String text = resolveSubmitText();
+        if (text.isEmpty() || waiting) return UpdateResult.from(this);
+
+        long now = System.currentTimeMillis();
+        if (text.equals(lastEnterText) && (now - lastEnterAtMs) < 1000) {
+            composer.reset();
+            clearPasteState();
+            return UpdateResult.from(this);
+        }
+        lastEnterText = text;
+        lastEnterAtMs = now;
+        return submitUserText(text);
+    }
+
+    /**
+     * Insert a newline by going through the textarea's normal key binding path.
+     *
+     * This is important because the textarea's "insert rune/string" path sanitizes user input,
+     * and in tui4j's current port the sanitizer collapses newlines to spaces. Upstream Bubbles
+     * inserts newlines via the InsertNewline key binding, which splits the current line.
+     */
+    private UpdateResult<? extends Model> insertComposerNewline() {
+        KeyType enterType = KeyAliases.getKeyType(KeyAlias.KeyEnter);
+        UpdateResult<Textarea> r = composer.update(
+            new KeyPressMessage(new Key(enterType))
+        );
+        return UpdateResult.from(this, r.command());
+    }
+
+    /**
+     * Handles pasted content by creating a placeholder and storing the actual text.
+     * Line breaks are preserved; paste NEVER triggers submit.
+     */
+    private UpdateResult<? extends Model> handlePaste(String content) {
+        if (content == null || content.isEmpty()) {
+            return UpdateResult.from(this);
+        }
+
+        pasteCounter++;
+        SummaryService.PasteSummary summary = summaryService.processPaste(
+            content,
+            pasteCounter
+        );
+
+        // Store the mapping from placeholder to actual content
+        pastedContents.add(
+            new PastedContent(
+                pasteCounter,
+                summary.displayText(),
+                summary.actualText()
+            )
+        );
+
+        // Insert the placeholder (or content if short) into the composer
+        composer.insertString(summary.displayText() + " ");
+
+        return UpdateResult.from(this);
+    }
+
+    /**
+     * Resolves the submit text by replacing paste placeholders with actual content.
+     */
+    private String resolveSubmitText() {
+        String display = composer.value();
+
+        // Replace all placeholders with actual content
+        for (PastedContent pc : pastedContents) {
+            display = display.replace(pc.displayText(), pc.actualText());
+        }
+
+        clearPasteState();
+        return display.trim();
+    }
+
+    /**
+     * Clears paste state after submission or reset.
+     */
+    private void clearPasteState() {
+        pastedContents.clear();
+        pasteCounter = 0;
+    }
+
+    private UpdateResult<? extends Model> handleMouseClick(
+        MouseClickMessage click
+    ) {
         if (click.button() != MouseButton.MouseButtonLeft) {
             return null;
         }
@@ -318,6 +603,15 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
 
         int column = click.column() - innerLeft;
         int row = click.row() - innerTop;
+
+        if (placesOverlay.isOpen() && placesOverlayLayout != null) {
+            if (!placesOverlayLayout.contains(column, row)) {
+                placesOverlay.close();
+                return UpdateResult.from(this);
+            }
+            // Places overlay handles clicks via keyboard navigation only for now
+            return UpdateResult.from(this);
+        }
 
         if (modelPalette.isOpen() && modelOverlayLayout != null) {
             if (!modelOverlayLayout.contains(column, row)) {
@@ -336,6 +630,19 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             return UpdateResult.from(this);
         }
 
+        if (configPalette.isOpen() && configOverlayLayout != null) {
+            if (!configOverlayLayout.contains(column, row)) {
+                configPalette.close();
+                return UpdateResult.from(this);
+            }
+            int index = configOverlayLayout.itemIndexAt(column, row);
+            if (index >= 0) {
+                configPalette.click(index);
+                return UpdateResult.from(this);
+            }
+            return UpdateResult.from(this);
+        }
+
         if (slashPalette.isOpen() && slashOverlayLayout != null) {
             if (!slashOverlayLayout.contains(column, row)) {
                 slashPalette.close();
@@ -343,7 +650,11 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             }
             int index = slashOverlayLayout.itemIndexAt(column, row);
             if (index >= 0) {
-                SlashCommandPalette.PaletteUpdate pu = slashPalette.click(index, composer, slashCommands);
+                SlashCommandPalette.PaletteUpdate pu = slashPalette.click(
+                    index,
+                    composer,
+                    slashCommands
+                );
                 return handleSlashPaletteUpdate(pu);
             }
             return UpdateResult.from(this);
@@ -369,7 +680,9 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         return null;
     }
 
-    private UpdateResult<? extends Model> handleSlashPaletteUpdate(SlashCommandPalette.PaletteUpdate pu) {
+    private UpdateResult<? extends Model> handleSlashPaletteUpdate(
+        SlashCommandPalette.PaletteUpdate pu
+    ) {
         if (pu == null || !pu.handled()) return null;
         if (pu.submitText() != null) return submitUserText(pu.submitText());
         return UpdateResult.from(this, pu.command());
@@ -386,30 +699,51 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             .borderForeground(TuiTheme.BORDER)
             .padding(0, 1, 0, 1);
 
-        int frameWidth = Math.max(1, viewportWidth - frame.getHorizontalBorderSize() - frame.getHorizontalMargins());
+        int frameWidth = Math.max(
+            1,
+            viewportWidth -
+                frame.getHorizontalBorderSize() -
+                frame.getHorizontalMargins()
+        );
         // Account for the custom top border we'll add (1 line)
-        int frameHeight = Math.max(1, viewportHeight - frame.getVerticalBorderSize() - frame.getVerticalMargins() - 1);
+        int frameHeight = Math.max(
+            1,
+            viewportHeight -
+                frame.getVerticalBorderSize() -
+                frame.getVerticalMargins() -
+                1
+        );
         frame.width(frameWidth).height(frameHeight);
 
-        int innerWidth = Math.max(20, viewportWidth - frame.getHorizontalFrameSize());
+        int innerWidth = Math.max(
+            20,
+            viewportWidth - frame.getHorizontalFrameSize()
+        );
         // Subtract 1 for our custom top border line
-        int innerHeight = Math.max(4, viewportHeight - frame.getVerticalFrameSize() - 1);
+        int innerHeight = Math.max(
+            4,
+            viewportHeight - frame.getVerticalFrameSize() - 1
+        );
 
         innerLeft = frame.getBorderLeftSize() + frame.leftPadding();
         innerTop = 1; // Top border is now line 0, content starts at line 1
 
-        String composerView = composer.view();
-        List<String> composerLines = splitLines(composerView);
-        if (composerLines.isEmpty()) composerLines = List.of("");
+        List<String> composerLines = renderComposer(innerWidth);
+        if (composerLines.isEmpty()) composerLines = List.of(
+            renderComposerLine("", 0, innerWidth, 0)
+        );
 
         String statusLeft = "";
         if (waiting) {
             Style spinnerStyle = TuiTheme.spinner();
             Style textStyle = TuiTheme.hint();
-            statusLeft = spinnerStyle.render(spinner.view()) + " " + textStyle.render("thinking...");
+            statusLeft =
+                spinnerStyle.render(spinner.view()) +
+                " " +
+                textStyle.render("thinking...");
         }
         String rightHints = TuiTheme.shortcutRow(
-            TuiTheme.shortcutHint("scroll", "Shift+↑/↓"),
+            TuiTheme.shortcutHint("newline", "Ctrl+J"),
             TuiTheme.shortcutHint("/", "commands"),
             TuiTheme.shortcutHint("esc", "quit")
         );
@@ -424,7 +758,9 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         List<String> lines = new ArrayList<>();
 
         HistoryRender historyRender = renderHistory(innerWidth, historyHeight);
-        List<String> visibleHistory = new ArrayList<>(historyRender.visibleStyled());
+        List<String> visibleHistory = new ArrayList<>(
+            historyRender.visibleStyled()
+        );
         int historyStartRow = 1; // After custom top border
         int historyStartCol = frame.getBorderLeftSize() + frame.leftPadding();
         mouseSelection.updateHistoryMapping(
@@ -436,29 +772,57 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         );
 
         if (mouseSelectionEnabled && mouseSelection.hasSelection()) {
-            int selectionStartLineIndex = mouseSelection.selectionStartLineIndex();
+            int selectionStartLineIndex =
+                mouseSelection.selectionStartLineIndex();
             int selectionStartCol = mouseSelection.selectionStartCol();
             int selectionEndLineIndex = mouseSelection.selectionEndLineIndex();
             int selectionEndCol = mouseSelection.selectionEndCol();
 
-            if (selectionStartLineIndex > selectionEndLineIndex
-                || (selectionStartLineIndex == selectionEndLineIndex && selectionStartCol > selectionEndCol)) {
-                int tempLine = selectionStartLineIndex; selectionStartLineIndex = selectionEndLineIndex; selectionEndLineIndex = tempLine;
-                int tempCol = selectionStartCol; selectionStartCol = selectionEndCol; selectionEndCol = tempCol;
+            if (
+                selectionStartLineIndex > selectionEndLineIndex ||
+                (selectionStartLineIndex == selectionEndLineIndex &&
+                    selectionStartCol > selectionEndCol)
+            ) {
+                int tempLine = selectionStartLineIndex;
+                selectionStartLineIndex = selectionEndLineIndex;
+                selectionEndLineIndex = tempLine;
+                int tempCol = selectionStartCol;
+                selectionStartCol = selectionEndCol;
+                selectionEndCol = tempCol;
             }
 
             int windowStartIndex = historyRender.windowStartIndex();
-            int windowEndIndex = windowStartIndex + historyRender.visiblePlain().size() - 1;
-            int visibleStartIndex = Math.max(selectionStartLineIndex, windowStartIndex);
-            int visibleEndIndex = Math.min(selectionEndLineIndex, windowEndIndex);
+            int windowEndIndex =
+                windowStartIndex + historyRender.visiblePlain().size() - 1;
+            int visibleStartIndex = Math.max(
+                selectionStartLineIndex,
+                windowStartIndex
+            );
+            int visibleEndIndex = Math.min(
+                selectionEndLineIndex,
+                windowEndIndex
+            );
 
-            for (int lineIndex = visibleStartIndex; lineIndex <= visibleEndIndex; lineIndex++) {
+            for (
+                int lineIndex = visibleStartIndex;
+                lineIndex <= visibleEndIndex;
+                lineIndex++
+            ) {
                 int visibleRowIndex = lineIndex - windowStartIndex;
-                int startCol = (lineIndex == selectionStartLineIndex) ? selectionStartCol : 0;
-                int endCol = (lineIndex == selectionEndLineIndex) ? selectionEndCol : Integer.MAX_VALUE;
+                int startCol = (lineIndex == selectionStartLineIndex)
+                    ? selectionStartCol
+                    : 0;
+                int endCol = (lineIndex == selectionEndLineIndex)
+                    ? selectionEndCol
+                    : Integer.MAX_VALUE;
                 visibleHistory.set(
                     visibleRowIndex,
-                    highlightSelection(historyRender.visiblePlain().get(visibleRowIndex), innerWidth, startCol, endCol)
+                    highlightSelection(
+                        historyRender.visiblePlain().get(visibleRowIndex),
+                        innerWidth,
+                        startCol,
+                        endCol
+                    )
                 );
             }
         }
@@ -475,13 +839,52 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         int statusRowIndex = lines.size() - 1;
 
         PaletteOverlay.Overlay slashOverlay = slashPalette.applyOverlay(
-            lines, innerWidth, innerHeight, dividerRow, slashCommands, composer.value()
+            lines,
+            innerWidth,
+            innerHeight,
+            dividerRow,
+            slashCommands,
+            composer.value()
         );
-        PaletteOverlay.Overlay modelOverlay = modelPalette.applyOverlay(lines, innerWidth, innerHeight, dividerRow);
-        slashOverlayLayout = (slashOverlay == null) ? null : slashOverlay.layout();
-        modelOverlayLayout = (modelOverlay == null) ? null : modelOverlay.layout();
+        PaletteOverlay.Overlay modelOverlay = modelPalette.applyOverlay(
+            lines,
+            innerWidth,
+            innerHeight,
+            dividerRow
+        );
+        PaletteOverlay.Overlay configOverlay = configPalette.applyOverlay(
+            lines,
+            innerWidth,
+            innerHeight,
+            dividerRow
+        );
+        PaletteOverlay.Overlay placesOverlayRendered =
+            placesOverlay.applyOverlay(
+                lines,
+                innerWidth,
+                innerHeight,
+                dividerRow
+            );
+        slashOverlayLayout = (slashOverlay == null)
+            ? null
+            : slashOverlay.layout();
+        modelOverlayLayout = (modelOverlay == null)
+            ? null
+            : modelOverlay.layout();
+        configOverlayLayout = (configOverlay == null)
+            ? null
+            : configOverlay.layout();
+        placesOverlayLayout = (placesOverlayRendered == null)
+            ? null
+            : placesOverlayRendered.layout();
 
-        mouseTargets = buildMouseTargets(statusRow, statusRowIndex, slashOverlay, modelOverlay);
+        mouseTargets = buildMouseTargets(
+            statusRow,
+            statusRowIndex,
+            slashOverlay,
+            modelOverlay,
+            configOverlay
+        );
 
         while (lines.size() < innerHeight) {
             lines.add(" ".repeat(innerWidth));
@@ -499,28 +902,46 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
     }
 
     private List<MouseTarget> buildMouseTargets(
-            String statusRow,
-            int statusRowIndex,
-            PaletteOverlay.Overlay slashOverlay,
-            PaletteOverlay.Overlay modelOverlay
+        String statusRow,
+        int statusRowIndex,
+        PaletteOverlay.Overlay slashOverlay,
+        PaletteOverlay.Overlay modelOverlay,
+        PaletteOverlay.Overlay configOverlay
     ) {
         List<MouseTarget> targets = new ArrayList<>();
         addToolbarTargets(statusRow, statusRowIndex, targets);
         addOverlayTargets("slash", slashOverlay, targets);
         addOverlayTargets("model", modelOverlay, targets);
+        addOverlayTargets("config", configOverlay, targets);
         return targets;
     }
 
-    private void addToolbarTargets(String statusRow, int statusRowIndex, List<MouseTarget> targets) {
+    private void addToolbarTargets(
+        String statusRow,
+        int statusRowIndex,
+        List<MouseTarget> targets
+    ) {
         String plain = TuiTheme.stripAnsi(statusRow);
         int commandsIndex = plain.indexOf("commands");
         if (commandsIndex < 0) return;
         int row = innerTop + statusRowIndex;
         int col = innerLeft + commandsIndex;
-        targets.add(MouseTarget.click("toolbar.commands", col, row, "commands".length(), 1));
+        targets.add(
+            MouseTarget.click(
+                "toolbar.commands",
+                col,
+                row,
+                "commands".length(),
+                1
+            )
+        );
     }
 
-    private void addOverlayTargets(String prefix, PaletteOverlay.Overlay overlay, List<MouseTarget> targets) {
+    private void addOverlayTargets(
+        String prefix,
+        PaletteOverlay.Overlay overlay,
+        List<MouseTarget> targets
+    ) {
         if (overlay == null || overlay.layout() == null) return;
         PaletteOverlay.Layout layout = overlay.layout();
         int visibleCount = layout.visibleItemCount();
@@ -530,7 +951,15 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         for (int i = 0; i < visibleCount; i++) {
             int index = layout.scrollTop() + i;
             int row = itemStartRow + i;
-            targets.add(MouseTarget.click(prefix + ".item." + index, itemStartCol, row, itemWidth, 1));
+            targets.add(
+                MouseTarget.click(
+                    prefix + ".item." + index,
+                    itemStartCol,
+                    row,
+                    itemWidth,
+                    1
+                )
+            );
         }
     }
 
@@ -540,22 +969,61 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         if (text.isEmpty() || waiting) return UpdateResult.from(this);
 
         if (text.startsWith("/")) {
-            SlashCommand sc = SlashCommands.matchInvocation(slashCommands, text);
-            if (sc != null && sc.quits()) return UpdateResult.from(this, QuitMessage::new);
+            SlashCommand sc = SlashCommands.matchInvocation(
+                slashCommands,
+                text
+            );
+            if (sc != null && sc.quits()) return UpdateResult.from(
+                this,
+                QuitMessage::new
+            );
 
             if (sc instanceof ModelSlashCommand) {
                 composer.reset();
                 return openModelPalette();
             }
 
-            SlashLlmOverride override = (sc == null) ? null : SLASH_LLM_OVERRIDES.get(sc.name());
-            if (override != null) {
-                return submitToLlmDetached(text, override.userTextFor(text), override.systemPromptFor(text));
+            if (sc instanceof ConfigSlashCommand) {
+                composer.reset();
+                configPalette.open(config);
+                return UpdateResult.from(this);
             }
 
-            if (sc != null && ("/clear".equals(sc.name()) || "/new".equals(sc.name()))) {
+            // /locate: without args opens interactive overlay, with args goes to LLM
+            if (sc instanceof LocateSlashCommand.Command) {
+                String locateQuery = parseLocateQuery(text);
+                if (locateQuery.isBlank()) {
+                    // No args: open interactive input overlay
+                    composer.reset();
+                    return openPlacesInputOverlay();
+                }
+                // Has args: fall through to LLM override
+            }
+
+            SlashLlmOverride override = (sc == null)
+                ? null
+                : SLASH_LLM_OVERRIDES.get(sc.name());
+            if (override != null) {
+                return submitToLlmDetached(
+                    text,
+                    override.userTextFor(text),
+                    override.systemPromptFor(text)
+                );
+            }
+
+            if (
+                sc != null &&
+                ("/clear".equals(sc.name()) || "/new".equals(sc.name()))
+            ) {
                 Conversation next = newConversationLikeCurrent();
-                ChatConversationScreen nextScreen = new ChatConversationScreen(userName, next, config, width, height, false);
+                ChatConversationScreen nextScreen = new ChatConversationScreen(
+                    userName,
+                    next,
+                    config,
+                    width,
+                    height,
+                    false
+                );
                 return UpdateResult.from(
                     nextScreen,
                     batch(
@@ -573,7 +1041,10 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
 
             Command call = slashOrChatCall(text);
             Command printUser = maybePrintToScrollback(userName, text);
-            return UpdateResult.from(this, batch(printUser, call, spinner.init()));
+            return UpdateResult.from(
+                this,
+                batch(printUser, call, spinner.init())
+            );
         }
 
         return submitToLlm(text, null);
@@ -583,16 +1054,73 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         try {
             List<String> models = openAiService.modelChoices();
             if (models.isEmpty()) {
-                return UpdateResult.from(this, () -> new LocalDisplayMessage("No models available from API"));
+                return UpdateResult.from(this, () ->
+                    new LocalDisplayMessage("No models available from API")
+                );
             }
             modelPalette.open(models);
             return UpdateResult.from(this);
         } catch (Exception e) {
             String error = e.getMessage();
-            return UpdateResult.from(this, () -> new LocalDisplayMessage(
-                "Failed to fetch models: " + (error == null ? e.getClass().getSimpleName() : error)
-            ));
+            return UpdateResult.from(this, () ->
+                new LocalDisplayMessage(
+                    "Failed to fetch models: " +
+                        (error == null ? e.getClass().getSimpleName() : error)
+                )
+            );
         }
+    }
+
+    /** Opens the interactive places overlay in input mode. */
+    private UpdateResult<? extends Model> openPlacesInputOverlay() {
+        if (!AppleMapsService.isConfigured(config)) {
+            return UpdateResult.from(this, () ->
+                new LocalDisplayMessage(
+                    "Apple Maps not configured. Set APPLE_MAPS_TOKEN environment variable."
+                )
+            );
+        }
+        placesOverlay.openForInput();
+        return UpdateResult.from(this);
+    }
+
+    /** Performs a places search and displays results in the overlay. */
+    private UpdateResult<? extends Model> performPlacesSearch(String query) {
+        if (query == null || query.isBlank()) {
+            return UpdateResult.from(this);
+        }
+
+        try {
+            AppleMapsService service = new AppleMapsService(config);
+            List<AppleMapsService.PlaceResult> results = service.search(query);
+            if (results.isEmpty()) {
+                placesOverlay.close();
+                return UpdateResult.from(this, () ->
+                    new LocalDisplayMessage("No places found for \"" + query + "\"")
+                );
+            }
+            placesOverlay.open(query, results);
+            return UpdateResult.from(this);
+        } catch (Exception e) {
+            placesOverlay.close();
+            String error = e.getMessage();
+            return UpdateResult.from(this, () ->
+                new LocalDisplayMessage(
+                    "Search failed: " + (error == null ? e.getClass().getSimpleName() : error)
+                )
+            );
+        }
+    }
+
+    private static String parseLocateQuery(String input) {
+        if (input == null) return "";
+        String trimmed = input.trim();
+        if (!trimmed.toLowerCase().startsWith("/locate")) return "";
+        String rest = trimmed.substring("/locate".length()).trim();
+        if (rest.length() >= 2 && rest.startsWith("\"") && rest.endsWith("\"")) {
+            rest = rest.substring(1, rest.length() - 1);
+        }
+        return rest;
     }
 
     private Conversation newConversationLikeCurrent() {
@@ -608,9 +1136,15 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
     }
 
     private Command slashOrChatCall(String text) {
-        SlashCommand sc = text != null && text.startsWith("/") ? SlashCommands.matchInvocation(slashCommands, text) : null;
+        SlashCommand sc =
+            text != null && text.startsWith("/")
+                ? SlashCommands.matchInvocation(slashCommands, text)
+                : null;
         if (text != null && text.startsWith("/") && sc == null) {
-            return () -> new LocalDisplayMessage("Unknown slash command: " + text.split("\\s+", 2)[0]);
+            return () ->
+                new LocalDisplayMessage(
+                    "Unknown slash command: " + text.split("\\s+", 2)[0]
+                );
         }
         if (sc != null) {
             return () -> {
@@ -624,8 +1158,9 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
                 } catch (Throwable t) {
                     String err = t.getMessage();
                     return new LocalDisplayMessage(
-                        "ERROR " + t.getClass().getSimpleName()
-                            + (err == null || err.isBlank() ? "" : (": " + err))
+                        "ERROR " +
+                            t.getClass().getSimpleName() +
+                            (err == null || err.isBlank() ? "" : (": " + err))
                     );
                 }
             };
@@ -634,7 +1169,10 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         return llmCall();
     }
 
-    private UpdateResult<? extends Model> submitToLlm(String text, String internalSystemPrompt) {
+    private UpdateResult<? extends Model> submitToLlm(
+        String text,
+        String internalSystemPrompt
+    ) {
         append(Role.USER, ChatMessage.Source.USER_INPUT, text);
         appendInternalSystemPrompt(internalSystemPrompt);
         composer.reset();
@@ -647,10 +1185,16 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         return UpdateResult.from(this, batch(printUser, call, spinner.init()));
     }
 
-    private UpdateResult<? extends Model> submitToLlmDetached(String displayText, String llmUserText, String internalSystemPrompt) {
+    private UpdateResult<? extends Model> submitToLlmDetached(
+        String displayText,
+        String llmUserText,
+        String internalSystemPrompt
+    ) {
         append(Role.USER, ChatMessage.Source.LOCAL, displayText);
         appendInternalSystemPrompt(internalSystemPrompt);
-        String userText = (llmUserText == null || llmUserText.isBlank()) ? displayText : llmUserText;
+        String userText = (llmUserText == null || llmUserText.isBlank())
+            ? displayText
+            : llmUserText;
         append(Role.USER, ChatMessage.Source.INTERNAL, userText);
         composer.reset();
         waiting = true;
@@ -663,26 +1207,65 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
     }
 
     private void appendInternalSystemPrompt(String internalSystemPrompt) {
-        if (internalSystemPrompt == null || internalSystemPrompt.isBlank()) return;
+        if (
+            internalSystemPrompt == null || internalSystemPrompt.isBlank()
+        ) return;
         append(Role.SYSTEM, ChatMessage.Source.INTERNAL, internalSystemPrompt);
     }
 
     private Command llmCall() {
         return () -> {
             try {
-                String replyText = toolExecutor.respond(conversation, conversation.getDefaultModel());
+                String replyText = toolExecutor.respond(
+                    conversation,
+                    conversation.getDefaultModel()
+                );
                 return new AssistantReplyMessage(replyText);
             } catch (Throwable t) {
-                String err = t.getMessage();
-                String baseUrl = openAiService.baseUrl();
-                return new AssistantReplyMessage(
-                    "ERROR " + t.getClass().getSimpleName()
-                        + (err == null || err.isBlank() ? "" : (": " + err))
-                        + "\nBASE_URL=" + (baseUrl == null ? "(sdk default)" : baseUrl)
-                        + "\nMODEL=" + conversation.getDefaultModel()
-                );
+                return new LlmErrorMessage(formatLlmError(t), t);
             }
         };
+    }
+
+    private String formatLlmError(Throwable t) {
+        String err = t.getMessage();
+        String baseUrl = openAiService.baseUrl();
+        return (
+            "ERROR " +
+            t.getClass().getSimpleName() +
+            (err == null || err.isBlank() ? "" : (": " + err)) +
+            "\nBASE_URL=" +
+            (baseUrl == null ? "(sdk default)" : baseUrl) +
+            "\nMODEL=" +
+            conversation.getDefaultModel()
+        );
+    }
+
+    private String formatPlaceForContext(AppleMapsService.PlaceResult place) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Selected place from Apple Maps:\n");
+        sb.append("Name: ").append(place.name()).append("\n");
+        if (!place.category().isBlank()) {
+            sb.append("Category: ").append(place.category()).append("\n");
+        }
+        if (!place.address().isBlank()) {
+            sb.append("Address: ").append(place.address()).append("\n");
+        }
+        if (place.hasCoordinates()) {
+            sb
+                .append("Coordinates: ")
+                .append(place.latitude())
+                .append(", ")
+                .append(place.longitude())
+                .append("\n");
+        }
+        if (place.phone() != null && !place.phone().isBlank()) {
+            sb.append("Phone: ").append(place.phone()).append("\n");
+        }
+        if (place.url() != null && !place.url().isBlank()) {
+            sb.append("Website: ").append(place.url()).append("\n");
+        }
+        return sb.toString().trim();
     }
 
     private String renderTitleBorder(int width) {
@@ -698,7 +1281,9 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         }
 
         Style borderStyle = Style.newStyle().foreground(TuiTheme.BORDER);
-        Style titleStyle = Style.newStyle().foreground(TuiTheme.PRIMARY).bold(true);
+        Style titleStyle = Style.newStyle()
+            .foreground(TuiTheme.PRIMARY)
+            .bold(true);
         Style infoStyle = Style.newStyle().foreground(TuiTheme.MUTED);
 
         String configError = config.transientError(nowMs);
@@ -725,15 +1310,17 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             int lineWidth = Math.max(0, contentWidth - usedWidth);
 
             String line = borderStyle.render(horizontal.repeat(lineWidth));
-            return topLeft
-                + borderStyle.render(horizontal + " ")
-                + titleRendered
-                + borderStyle.render(" ")
-                + line
-                + borderStyle.render(" ")
-                + infoRendered
-                + borderStyle.render(" " + horizontal)
-                + topRight;
+            return (
+                topLeft +
+                borderStyle.render(horizontal + " ") +
+                titleRendered +
+                borderStyle.render(" ") +
+                line +
+                borderStyle.render(" ") +
+                infoRendered +
+                borderStyle.render(" " + horizontal) +
+                topRight
+            );
         }
 
         // With error: ┌─ brief ─ error message ─ model-name ─┐
@@ -745,19 +1332,26 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         String errorRendered = TuiTheme.warning().render(clipped);
 
         // Distribute remaining line chars between sections
-        int remainingLine = contentWidth - titleVisualWidth - infoVisualWidth - clippedWidth - 6;
+        int remainingLine =
+            contentWidth -
+            titleVisualWidth -
+            infoVisualWidth -
+            clippedWidth -
+            6;
         int leftLine = Math.max(1, remainingLine / 2);
         int rightLine = Math.max(1, remainingLine - leftLine);
 
-        return topLeft
-            + borderStyle.render(horizontal + " ")
-            + titleRendered
-            + borderStyle.render(" " + horizontal.repeat(leftLine) + " ")
-            + errorRendered
-            + borderStyle.render(" " + horizontal.repeat(rightLine) + " ")
-            + infoRendered
-            + borderStyle.render(" " + horizontal)
-            + topRight;
+        return (
+            topLeft +
+            borderStyle.render(horizontal + " ") +
+            titleRendered +
+            borderStyle.render(" " + horizontal.repeat(leftLine) + " ") +
+            errorRendered +
+            borderStyle.render(" " + horizontal.repeat(rightLine) + " ") +
+            infoRendered +
+            borderStyle.render(" " + horizontal) +
+            topRight
+        );
     }
 
     private static String joinLeftRight(String left, String right, int width) {
@@ -784,7 +1378,9 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
 
     private HistoryRender renderHistory(int wrapWidth, int maxLines) {
         String allHistory = renderAllHistory(wrapWidth);
-        String[] allLines = allHistory.isEmpty() ? new String[0] : allHistory.split("\n", -1);
+        String[] allLines = allHistory.isEmpty()
+            ? new String[0]
+            : allHistory.split("\n", -1);
 
         if (allLines.length == 0) {
             List<String> empty = new ArrayList<>();
@@ -794,14 +1390,18 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             for (int i = 0; i < pad; i++) empty.add("");
             empty.add(TuiTheme.center(emptyMsg, wrapWidth));
             while (empty.size() < maxLines) empty.add("");
-            List<String> visiblePlain = empty.stream()
+            List<String> visiblePlain = empty
+                .stream()
                 .map(TuiTheme::stripAnsi)
                 .map(ChatConversationScreen::rstrip)
                 .toList();
             return new HistoryRender(empty, visiblePlain, List.of(), 0);
         }
 
-        HistoryViewport.Window window = historyViewport.window(allLines.length, maxLines);
+        HistoryViewport.Window window = historyViewport.window(
+            allLines.length,
+            maxLines
+        );
 
         List<String> visibleStyled = new ArrayList<>();
         for (int i = window.startInclusive(); i < window.endExclusive(); i++) {
@@ -811,7 +1411,8 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             visibleStyled.add(" ".repeat(wrapWidth));
         }
 
-        List<String> visiblePlain = visibleStyled.stream()
+        List<String> visiblePlain = visibleStyled
+            .stream()
             .map(TuiTheme::stripAnsi)
             .map(ChatConversationScreen::rstrip)
             .toList();
@@ -820,15 +1421,27 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
             .map(ChatConversationScreen::rstrip)
             .toList();
 
-        return new HistoryRender(visibleStyled, visiblePlain, allPlain, window.startInclusive());
+        return new HistoryRender(
+            visibleStyled,
+            visiblePlain,
+            allPlain,
+            window.startInclusive()
+        );
     }
 
     private String renderAllHistory(int wrapWidth) {
         StringBuilder out = new StringBuilder();
         for (ChatMessage m : conversation.getMessages()) {
-            if (m != null && m.source() == ChatMessage.Source.INTERNAL) continue;
-            if (!showToolMessages && m != null && m.role() == Role.TOOL
-                && m.toolCallId() != null && !m.toolCallId().isBlank()) continue;
+            if (
+                m != null && m.source() == ChatMessage.Source.INTERNAL
+            ) continue;
+            if (
+                !showToolMessages &&
+                m != null &&
+                m.role() == Role.TOOL &&
+                m.toolCallId() != null &&
+                !m.toolCallId().isBlank()
+            ) continue;
             out.append(renderMessageBlock(m, wrapWidth));
         }
         return TuiTheme.stripTrailingNewlines(out.toString());
@@ -847,15 +1460,25 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         StringBuilder out = new StringBuilder();
         out.append(label).append("\n");
 
-        String content = (m.content() == null) ? "" : m.content();
-        if (m.role() == Role.ASSISTANT && content.isBlank() && m.toolCalls() != null && !m.toolCalls().isEmpty()) {
+        String content = sanitizeForDisplay(
+            (m.content() == null) ? "" : m.content()
+        );
+        if (
+            m.role() == Role.ASSISTANT &&
+            content.isBlank() &&
+            m.toolCalls() != null &&
+            !m.toolCalls().isEmpty()
+        ) {
             String toolName = m.toolCalls().getFirst().name();
             String banner = ToolCallBanner.render(toolName, wrapWidth);
             for (String line : banner.split("\n", -1)) {
                 out.append(line).append("\n");
             }
         } else {
-            String wrapped = new TextWrapper().wrap(content, Math.max(10, wrapWidth));
+            String wrapped = new TextWrapper().wrap(
+                content,
+                Math.max(10, wrapWidth)
+            );
             for (String line : wrapped.split("\n", -1)) {
                 out.append(line).append("\n");
             }
@@ -865,36 +1488,74 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         return out.toString();
     }
 
+    /**
+     * Sanitizes text for terminal display.
+     *
+     * Pasted content frequently includes ANSI escape sequences (colors/cursor moves) that will
+     * corrupt the TUI layout if rendered directly. We strip common ANSI sequences and normalize
+     * newlines for predictable wrapping.
+     */
+    private static String sanitizeForDisplay(String s) {
+        if (s == null || s.isEmpty()) return "";
+        String out = s.replace("\r\n", "\n").replace('\r', '\n');
+        // Tabs render with terminal-dependent width; normalize to spaces so wrapping stays correct.
+        out = out.replace("\t", "    ");
+        // ANSI CSI sequences (most common).
+        out = out.replaceAll("\u001B\\[[0-?]*[ -/]*[@-~]", "");
+        // ANSI OSC sequences (window title, hyperlinks, etc.).
+        out = out.replaceAll("\u001B\\][^\u0007]*(\u0007|\u001B\\\\)", "");
+        // Strip other control characters that can corrupt terminal layout (keep newlines).
+        out = out.replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]", "");
+        return out;
+    }
+
     private void append(Role role, ChatMessage.Source source, String content) {
         int index = conversation.getMessages().size();
-        conversation.addMessage(new ChatMessage(
-            "m_%04d_%s".formatted(index + 1, UUID.randomUUID().toString().substring(0, 8)),
-            conversation.getId(),
-            index,
-            role,
-            source,
-            content == null ? "" : content,
-            OffsetDateTime.now(ZoneOffset.UTC),
-            conversation.getDefaultModel(),
-            conversation.getProvider().name().toLowerCase(),
-            null,
-            null,
-            null,
-            null,
-            null
-        ));
+        conversation.addMessage(
+            new ChatMessage(
+                "m_%04d_%s".formatted(
+                    index + 1,
+                    UUID.randomUUID().toString().substring(0, 8)
+                ),
+                conversation.getId(),
+                index,
+                role,
+                source,
+                content == null ? "" : content,
+                OffsetDateTime.now(ZoneOffset.UTC),
+                conversation.getDefaultModel(),
+                conversation.getProvider().name().toLowerCase(),
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+        );
     }
 
     private Command maybePrintToScrollback(String label, String content) {
         if (!printToScrollback) return null;
-        String safeLabel = (label == null || label.isBlank()) ? "" : label.trim();
+        String safeLabel = (label == null || label.isBlank())
+            ? ""
+            : label.trim();
         String safeContent = content == null ? "" : content;
-        String line = safeLabel.isEmpty() ? safeContent : (safeLabel + ": " + safeContent);
+        String line = safeLabel.isEmpty()
+            ? safeContent
+            : (safeLabel + ": " + safeContent);
         return Command.println(line);
     }
 
-    private static String highlightSelection(String plain, int width, int startCol, int endCol) {
-        if (plain == null || plain.isEmpty()) return TuiTheme.padRight("", width);
+    private static String highlightSelection(
+        String plain,
+        int width,
+        int startCol,
+        int endCol
+    ) {
+        if (plain == null || plain.isEmpty()) return TuiTheme.padRight(
+            "",
+            width
+        );
 
         int n = plain.length();
         int s = Math.max(0, Math.min(startCol, n));
@@ -907,7 +1568,10 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         String selected = plain.substring(first, last);
         String suffix = plain.substring(last);
 
-        return TuiTheme.padRight(prefix + "\u001b[7m" + selected + "\u001b[0m" + suffix, width);
+        return TuiTheme.padRight(
+            prefix + "\u001b[7m" + selected + "\u001b[0m" + suffix,
+            width
+        );
     }
 
     private static String rstrip(String s) {
@@ -917,12 +1581,108 @@ public final class ChatConversationScreen implements Model, MouseTargetProvider 
         return s.substring(0, i + 1);
     }
 
-    private static List<String> splitLines(String s) {
-        if (s == null || s.isEmpty()) return List.of();
-        List<String> result = new ArrayList<>();
-        for (String line : s.split("\n", -1)) {
-            result.add(line);
+    /**
+     * Renders a clean input panel without repeated prompts.
+     * Shows "› " on the first line only, continuation lines are indented.
+     * Cursor is shown as reverse-video block on the current position.
+     */
+    private List<String> renderComposer(int width) {
+        String value = composer.value();
+        if (value == null) value = "";
+
+        // Show placeholder if empty
+        if (value.isEmpty()) {
+            return List.of(renderPlaceholderLine(width));
         }
+
+        // Split into lines (user creates lines with Shift+Enter)
+        String[] lines = value.split("\n", -1);
+
+        // Get cursor position
+        int cursorRow = composer.line();
+        int cursorCol = composer.lineInfo().columnOffset();
+
+        List<String> result = new ArrayList<>();
+        for (int i = 0; i < lines.length; i++) {
+            boolean hasCursor = (i == cursorRow);
+            int cursorPos = hasCursor ? cursorCol : -1;
+            result.add(renderComposerLine(lines[i], i, width, cursorPos));
+        }
+
         return result;
+    }
+
+    /**
+     * Renders a single composer line with prompt on first line only.
+     * If cursorPos >= 0, renders cursor at that position.
+     */
+    private String renderComposerLine(
+        String text,
+        int lineIndex,
+        int width,
+        int cursorPos
+    ) {
+        Style promptStyle = TuiTheme.inputPrompt();
+        Style textStyle = Style.newStyle().foreground(TuiTheme.PRIMARY);
+
+        String prefix;
+        if (lineIndex == 0) {
+            prefix = promptStyle.render("› ");
+        } else {
+            prefix = "  "; // Indent continuation lines to align with first line
+        }
+
+        // Calculate available width for text (subtract prefix width)
+        int prefixWidth = 2;
+        int textWidth = width - prefixWidth;
+
+        // Build the text with cursor
+        StringBuilder sb = new StringBuilder();
+        sb.append(prefix);
+
+        if (cursorPos < 0) {
+            // No cursor on this line
+            String displayText = text;
+            if (TuiTheme.visualWidth(displayText) > textWidth) {
+                displayText = TuiTheme.truncate(displayText, textWidth);
+            }
+            sb.append(textStyle.render(displayText));
+        } else {
+            // Render with cursor
+            int pos = Math.min(cursorPos, text.length());
+
+            // Text before cursor
+            if (pos > 0) {
+                sb.append(textStyle.render(text.substring(0, pos)));
+            }
+
+            // Cursor character (reverse video)
+            String cursorChar = (pos < text.length())
+                ? String.valueOf(text.charAt(pos))
+                : " ";
+            sb.append("\u001b[7m").append(cursorChar).append("\u001b[0m");
+
+            // Text after cursor
+            if (pos + 1 < text.length()) {
+                sb.append(textStyle.render(text.substring(pos + 1)));
+            }
+        }
+
+        return TuiTheme.padRight(sb.toString(), width);
+    }
+
+    /**
+     * Renders the placeholder line when composer is empty.
+     */
+    private String renderPlaceholderLine(int width) {
+        Style promptStyle = TuiTheme.inputPrompt();
+        Style placeholderStyle = TuiTheme.hint();
+
+        String prefix = promptStyle.render("› ");
+        // Show cursor at start, then placeholder
+        String cursor = "\u001b[7m \u001b[0m";
+        String placeholder = placeholderStyle.render("Ask me anything...");
+
+        return TuiTheme.padRight(prefix + cursor + placeholder, width);
     }
 }

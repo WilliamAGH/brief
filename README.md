@@ -1,103 +1,50 @@
+[![Context7](src/main/resources/static/img/context7-badge.svg)](https://context7.com/williamagh/brief)
+[![DeepWiki](src/main/resources/static/img/deepwiki-badge.svg)](https://deepwiki.com/WilliamAGH/brief)
+
 # Brief
 
-Brief is a terminal OpenAI ChatGPT interface for fast, keyboard-first chat and tool use.
-It includes a slash-command palette, local tool execution (e.g., live weather), and supports OpenAI-compatible providers.
+A terminal ChatGPT client for fast, keyboard-first chat. Includes slash commands, tool execution, and support for OpenAI-compatible providers.
 
-![Brief screenshot](docs/assets/brief-screenshot-1.png)
+![Brief screenshot](src/main/resources/static/img/brief-screenshot-1.png)
 
-Built with [tui4j](https://github.com/williamcallahan/tui4j).
+Built with [TUI4J](https://github.com/WilliamAGH/tui4j) — a Java port of [Bubble Tea](https://github.com/charmbracelet/bubbletea). Location features powered by [Apple Maps Java](https://github.com/WilliamAGH/apple-maps-java).
 
-Canonical repo: https://github.com/WilliamAGH/brief
+![Apple Maps in Brief](src/main/resources/static/img/apple-maps-java-screenshot.png)
 
-Made by [William Callahan](https://williamcallahan.com).
-
-## What it does
-
-Brief is a terminal-first chat client with a slash-command palette, local tool execution (e.g., live weather API), and OpenAI chat completion integration. Persistence and broader provider support are not implemented yet.
-
-## Inspiration
-
-Brief is a showcase of what's possible in modern Java in 2026, and the interface library used (tui4j) is a Java port of the popular Go library called [BubbleTea](https://github.com/charmbracelet/bubbletea) from [Charm](https://charm.land/).
-
-## Installation
+## Quick Start
 
 ### Homebrew (macOS)
 
 ```bash
 brew install williamagh/tap/brief
-```
-
-Or install nightly (latest from main):
-
-```bash
-brew install --head williamagh/tap/brief
-```
-
-Then run `brief` — the app will prompt you for your API key on first launch and save it to `~/.config/brief/config`.
-
-```bash
 brief
 ```
 
-For alternative providers (OpenRouter, Ollama, LMStudio) or advanced configuration, see the [setup guide](docs/environment-variables-api-keys.md).
+The app prompts for your API key on first launch and saves it to `~/.config/brief/config`.
 
-### GitHub Releases (macOS/Linux/Windows)
+For alternative providers (OpenRouter, Ollama, LMStudio), see the [configuration guide](docs/environment-variables-api-keys.md).
 
-Download the latest release zip:
+### GitHub Releases
 
-```bash
-curl -L -o brief.zip https://github.com/WilliamAGH/brief/releases/latest/download/brief.zip
-unzip brief.zip
-cd brief-*/
-./bin/brief
-```
-
-Windows (PowerShell):
-
-```powershell
-Invoke-WebRequest -Uri https://github.com/WilliamAGH/brief/releases/latest/download/brief.zip -OutFile brief.zip
-Expand-Archive brief.zip -DestinationPath .
-cd brief-*
-.\bin\brief.bat
-```
-
-Requires Java 25. The app will prompt you for your API key on first launch.
+Download from [releases](https://github.com/WilliamAGH/brief/releases/latest). Requires Java 25.
 
 ## Development
-
-### Requirements
-
-- Java 25
-- Gradle 9.x
-- OpenAI API key (or compatible provider)
-
-### Setup
 
 ```bash
 git clone https://github.com/WilliamAGH/brief.git
 cd brief
-cp .env-example .env   # edit with your API key (development only)
+cp .env-example .env   # add your API key
 make run
 ```
 
-> **Note:** The `.env` file is for local development with `make run`, and only for users who cloned this repository from GitHub. End users installing via Homebrew should use the in-app prompt or set `OPENAI_API_KEY` in their shell. See the [setup guide](docs/environment-variables-api-keys.md) for all options.
-
-### Development Commands
-
-```bash
-make run     # Build and run
-make build   # Build only
-make clean   # Clean build artifacts
-```
-
-## Persistence
-
-Persistence is not implemented yet.
+Commands: `make run` | `make build` | `make clean`
 
 ## Contributing
 
-Found a bug or have a feature request? Please [open an issue](https://github.com/WilliamAGH/brief/issues/new) on GitHub. Contributions and feedback are welcome, and Pull Requests (PRs) are encouraged!
+[Open an issue](https://github.com/WilliamAGH/brief/issues/new) for bugs or feature requests. PRs welcome.
 
-## Upcoming Plans / Use Cases
+---
 
-Currently building an implementation for [aVenture.vc](https://aventure.vc) — a research tool that makes it possible to research any private company in seconds and get full details, all from the command line.
+Made by [William Callahan](https://williamcallahan.com) · [Repo](https://github.com/WilliamAGH/brief)
+
+[Other projects I've made](https://williamcallahan.com/projects)

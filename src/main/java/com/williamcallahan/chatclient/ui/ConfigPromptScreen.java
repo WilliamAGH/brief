@@ -6,16 +6,16 @@ import com.williamcallahan.tui4j.compat.bubbletea.Command;
 import com.williamcallahan.tui4j.compat.bubbletea.Message;
 import com.williamcallahan.tui4j.compat.bubbletea.Model;
 import com.williamcallahan.tui4j.compat.bubbletea.UpdateResult;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Position;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.Style;
-import com.williamcallahan.tui4j.compat.bubbletea.lipgloss.border.StandardBorder;
+import com.williamcallahan.tui4j.compat.lipgloss.Position;
+import com.williamcallahan.tui4j.compat.lipgloss.border.StandardBorder;
+import com.williamcallahan.tui4j.compat.lipgloss.Style;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
+import com.williamcallahan.tui4j.compat.bubbletea.KeyPressMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
-import com.williamcallahan.tui4j.compat.bubbletea.message.KeyPressMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.message.QuitMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.message.WindowSizeMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.bubbles.textinput.TextInput;
+import com.williamcallahan.tui4j.compat.bubbletea.QuitMessage;
+import com.williamcallahan.tui4j.compat.bubbletea.WindowSizeMessage;
+import com.williamcallahan.tui4j.compat.bubbles.textinput.TextInput;
 
 import static com.williamcallahan.tui4j.compat.bubbletea.Command.batch;
 import static com.williamcallahan.tui4j.compat.bubbletea.Command.setWindowTitle;
@@ -49,6 +49,11 @@ public abstract class ConfigPromptScreen implements Model {
 
     /** Called when user presses Enter. Must return next screen or quit. */
     protected abstract UpdateResult<? extends Model> onSubmit(String value);
+
+    /** Hint for the Esc key action. Override to customize (e.g., "skip" instead of "quit"). */
+    protected String skipHint() {
+        return "quit";
+    }
 
     @Override
     public Command init() {
@@ -99,7 +104,7 @@ public abstract class ConfigPromptScreen implements Model {
             "",
             TuiTheme.shortcutRow(
                 TuiTheme.shortcutHint("enter", "continue"),
-                TuiTheme.shortcutHint("esc", "quit")
+                TuiTheme.shortcutHint("esc", skipHint())
             ),
             ""
         );

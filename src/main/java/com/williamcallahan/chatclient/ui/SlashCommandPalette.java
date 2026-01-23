@@ -7,9 +7,9 @@ import com.williamcallahan.tui4j.compat.bubbletea.Message;
 import com.williamcallahan.tui4j.compat.bubbletea.UpdateResult;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
+import com.williamcallahan.tui4j.compat.bubbletea.KeyPressMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
-import com.williamcallahan.tui4j.compat.bubbletea.message.KeyPressMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.bubbles.textinput.TextInput;
+import com.williamcallahan.tui4j.compat.bubbles.textarea.Textarea;
 
 import java.util.List;
 
@@ -29,16 +29,15 @@ final class SlashCommandPalette {
         selectedIndex = 0;
     }
 
-    PaletteUpdate openFromMouse(TextInput composer, List<SlashCommand> commands) {
+    PaletteUpdate openFromMouse(Textarea composer, List<SlashCommand> commands) {
         if (open) return new PaletteUpdate(true, null, null);
         composer.setValue("/");
-        composer.cursorEnd();
         updateFromComposer(composer);
         clampSelection(SlashCommands.filterForComposer(commands, composer.value()).size());
         return new PaletteUpdate(true, null, null);
     }
 
-    PaletteUpdate update(KeyPressMessage key, Message rawMsg, TextInput composer, boolean waiting, List<SlashCommand> commands) {
+    PaletteUpdate update(KeyPressMessage key, Message rawMsg, Textarea composer, boolean waiting, List<SlashCommand> commands) {
         if (waiting) return new PaletteUpdate(false, null, null);
 
         if (!open) {
@@ -82,9 +81,16 @@ final class SlashCommandPalette {
 
         if (KeyAliases.getKeyType(KeyAlias.KeyEnter) == key.type()) {
             if (!matches.isEmpty()) {
+                SlashCommand selected = matches.get(selectedIndex);
                 String trimmed = safeTrim(composer.value());
                 if (trimmed.equals("/") || (trimmed.startsWith("/") && !trimmed.contains(" "))) {
-                    fillCommand(composer, matches.get(selectedIndex).name(), false);
+                    // Command requires args: fill with trailing space, don't submit
+                    if (selected.requiresArguments()) {
+                        fillCommand(composer, selected.name(), true);
+                        close();
+                        return new PaletteUpdate(true, null, null);
+                    }
+                    fillCommand(composer, selected.name(), false);
                 }
             }
             close();
@@ -99,7 +105,7 @@ final class SlashCommandPalette {
         return new PaletteUpdate(true, inputUpdate.command(), null);
     }
 
-    PaletteUpdate click(int index, TextInput composer, List<SlashCommand> commands) {
+    PaletteUpdate click(int index, Textarea composer, List<SlashCommand> commands) {
         if (!open) return new PaletteUpdate(false, null, null);
 
         List<SlashCommand> matches = SlashCommands.filterForComposer(commands, composer.value());
@@ -109,14 +115,23 @@ final class SlashCommandPalette {
             return new PaletteUpdate(true, null, null);
         }
         selectedIndex = Math.max(0, Math.min(index, matches.size() - 1));
-        String submit = matches.get(selectedIndex).name();
+        SlashCommand selected = matches.get(selectedIndex);
+
+        // Command requires args: fill composer with trailing space, don't submit
+        if (selected.requiresArguments()) {
+            fillCommand(composer, selected.name(), true);
+            close();
+            return new PaletteUpdate(true, null, null);
+        }
+
+        String submit = selected.name();
         close();
         return (submit == null || submit.isBlank())
             ? new PaletteUpdate(true, null, null)
             : new PaletteUpdate(true, null, submit);
     }
 
-    private void updateFromComposer(TextInput composer) {
+    private void updateFromComposer(Textarea composer) {
         String v = composer.value();
         if (v == null) v = "";
         String trimmed = v.stripLeading();
@@ -147,7 +162,7 @@ final class SlashCommandPalette {
         return r != null && r.length == 1 && r[0] == '/';
     }
 
-    private static void fillCommand(TextInput composer, String cmdName, boolean trailingSpace) {
+    private static void fillCommand(Textarea composer, String cmdName, boolean trailingSpace) {
         if (cmdName == null || cmdName.isBlank()) return;
         String v = composer.value();
         if (v == null) v = "";
@@ -164,7 +179,6 @@ final class SlashCommandPalette {
             next = cmdName + " " + args;
         }
         composer.setValue(next);
-        composer.cursorEnd();
     }
 
     PaletteOverlay.Overlay applyOverlay(List<String> baseLines, int innerWidth, int innerHeight, int dividerRow,

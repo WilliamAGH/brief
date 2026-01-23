@@ -14,14 +14,16 @@ public final class OpenAiService {
     private final OpenAIClient client;
     private final String baseUrl;
 
+    private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
+
     public OpenAiService(Config config) {
         String apiKey = config.resolveApiKey();
-        String customBaseUrl = System.getenv("OPENAI_BASE_URL");
+        String resolvedBaseUrl = config.resolveBaseUrl();
 
         if (apiKey == null) {
-            String target = (customBaseUrl == null || customBaseUrl.isBlank())
-                ? "the OpenAI API (https://api.openai.com/v1)"
-                : customBaseUrl;
+            String target = (resolvedBaseUrl == null)
+                ? "the OpenAI API (" + DEFAULT_BASE_URL + ")"
+                : resolvedBaseUrl;
             throw new ConfigException("""
 
                 ┌─────────────────────────────────────────────────────────────────┐
@@ -49,14 +51,12 @@ public final class OpenAiService {
                 """.formatted(target));
         }
 
-        // Build client with resolved API key (env or config) — empty string is valid for some endpoints
+        // Build client with resolved API key and base URL (env > config > default)
         this.client = OpenAIOkHttpClient.builder()
             .apiKey(apiKey)
-            .baseUrl(customBaseUrl != null && !customBaseUrl.isBlank()
-                ? customBaseUrl
-                : "https://api.openai.com/v1")
+            .baseUrl(resolvedBaseUrl != null ? resolvedBaseUrl : DEFAULT_BASE_URL)
             .build();
-        this.baseUrl = customBaseUrl;
+        this.baseUrl = resolvedBaseUrl;
     }
 
     public OpenAIClient client() {

@@ -5,12 +5,15 @@ import java.util.List;
 
 /** Slash command registry and helpers. */
 public final class SlashCommands {
+
     private SlashCommands() {}
 
     public static List<SlashCommand> defaults() {
         return List.of(
             new WeatherSlashCommand.Command(),
+            new LocateSlashCommand.Command(),
             new ModelSlashCommand(),
+            new ConfigSlashCommand(),
             new NewSlashCommand.Command(),
             new ClearSlashCommand.Command(),
             new AboutSlashCommand.Command(),
@@ -18,7 +21,10 @@ public final class SlashCommands {
         );
     }
 
-    public static List<SlashCommand> filterForComposer(List<SlashCommand> commands, String composerValue) {
+    public static List<SlashCommand> filterForComposer(
+        List<SlashCommand> commands,
+        String composerValue
+    ) {
         String prefix = slashTokenPrefix(composerValue);
         if (prefix == null) return List.of();
         if (prefix.isEmpty()) return commands;
@@ -27,14 +33,21 @@ public final class SlashCommands {
         List<SlashCommand> out = new ArrayList<>();
         for (SlashCommand c : commands) {
             String name = c.name();
-            if (name != null && name.length() > 1 && name.substring(1).toLowerCase().startsWith(p)) {
+            if (
+                name != null &&
+                name.length() > 1 &&
+                name.substring(1).toLowerCase().startsWith(p)
+            ) {
                 out.add(c);
             }
         }
         return out;
     }
 
-    public static SlashCommand matchInvocation(List<SlashCommand> commands, String input) {
+    public static SlashCommand matchInvocation(
+        List<SlashCommand> commands,
+        String input
+    ) {
         if (input == null) return null;
         String t = input.trim();
         for (SlashCommand c : commands) {
@@ -58,6 +71,7 @@ public final class SlashCommands {
     }
 
     private static final class Quit implements SlashCommand {
+
         @Override
         public String name() {
             return "/quit";
@@ -70,7 +84,7 @@ public final class SlashCommands {
 
         @Override
         public boolean matchesInvocation(String input) {
-            return input != null && input.equals(name());
+            return input != null && input.equalsIgnoreCase(name());
         }
 
         @Override

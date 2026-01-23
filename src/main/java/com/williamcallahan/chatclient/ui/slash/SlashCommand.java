@@ -37,4 +37,13 @@ public interface SlashCommand extends PaletteItem {
     default boolean quits() {
         return false;
     }
+
+    /**
+     * True if this command requires arguments before execution.
+     * When true, selecting the command in the palette fills the composer
+     * with a trailing space instead of submitting immediately.
+     */
+    default boolean requiresArguments() {
+        return false;
+    }
 }

@@ -4,14 +4,14 @@ plugins {
 }
 
 group = "com.williamcallahan"
-version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.1.2-SNAPSHOT"
+version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.1.3-SNAPSHOT"
 val tui4jLocalRequested = listOf(
     findProperty("tui4jLocal")?.toString(),
     System.getenv("TUI4J_LOCAL"),
 ).any { it == "true" }
 val isCi = (System.getenv("CI") == "true") || (System.getenv("GITHUB_ACTIONS") == "true")
-val tui4jSnapshotVersion = "0.2.5-SNAPSHOT"
-val tui4jReleaseVersion = "0.2.5"
+val tui4jSnapshotVersion = "0.3.0-PREVIEW"
+val tui4jReleaseVersion = "0.3.0-PREVIEW"
 val tui4jJlineVersion = "3.26.1"
 val tui4jIcuVersion = "76.1"
 val tui4jCommonsTextVersion = "1.13.0"
@@ -21,6 +21,7 @@ val tui4jLocalPathOverride = System.getenv("TUI4J_LOCAL_PATH")?.let { file(it) }
 val tui4jLocalJarCandidates = listOfNotNull(
     tui4jLocalPathOverride,
     file("../tui4j/build/libs/tui4j-${tui4jSnapshotVersion}.jar"),
+    file("$homeDir/Developer/git/cursor/tui4j/build/libs/tui4j-${tui4jSnapshotVersion}.jar"),
     file("$homeDir/Developer/git/tui4j/build/libs/tui4j-${tui4jSnapshotVersion}.jar"),
 )
 val tui4jLocalJar = tui4jLocalJarCandidates.firstOrNull { it.exists() } ?: tui4jLocalJarCandidates.first()
@@ -49,6 +50,7 @@ dependencies {
         implementation("com.williamcallahan:tui4j:$tui4jVersion")
     }
     implementation("com.openai:openai-java:4.11.0")
+    implementation("com.williamcallahan:apple-maps-java:0.1.4")
     implementation(platform("com.fasterxml.jackson:jackson-bom:2.18.2"))
     implementation("com.fasterxml.jackson.core:jackson-databind")
     compileOnly("org.projectlombok:lombok:edge-SNAPSHOT")
