@@ -4,6 +4,7 @@ import com.williamcallahan.chatclient.ui.ApiKeyPromptScreen;
 import com.williamcallahan.chatclient.ui.WelcomeScreen;
 import com.williamcallahan.tui4j.compat.bubbletea.Model;
 import com.williamcallahan.tui4j.compat.bubbletea.Program;
+import com.williamcallahan.tui4j.input.kitty.KittyEnterKeyMappings;
 import org.jline.utils.Signals;
 
 import java.util.logging.Level;
@@ -74,7 +75,10 @@ public class Main {
         // This prevents escape sequence leakage during startup/shutdown race conditions.
 
         try {
-            Program program = new Program(startScreen);
+            Program program = new Program(
+                startScreen,
+                KittyEnterKeyMappings.withKittyEnterKeyMappings()
+            );
             if (useAlt) {
                 program = program.withAltScreen();
             }
