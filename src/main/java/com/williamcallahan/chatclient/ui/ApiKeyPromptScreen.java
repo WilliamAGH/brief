@@ -1,24 +1,28 @@
 package com.williamcallahan.chatclient.ui;
 
+import static com.williamcallahan.tui4j.compat.bubbletea.Command.batch;
+import static com.williamcallahan.tui4j.compat.bubbletea.Command.setWindowTitle;
+
 import com.williamcallahan.chatclient.Config;
 import com.williamcallahan.chatclient.domain.Conversation;
 import com.williamcallahan.tui4j.compat.bubbletea.Command;
 import com.williamcallahan.tui4j.compat.bubbletea.Model;
 import com.williamcallahan.tui4j.compat.bubbletea.UpdateResult;
-
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
-
-import static com.williamcallahan.tui4j.compat.bubbletea.Command.batch;
-import static com.williamcallahan.tui4j.compat.bubbletea.Command.setWindowTitle;
 
 /** Prompts for OpenAI API key when missing from env and config. */
 public class ApiKeyPromptScreen extends ConfigPromptScreen {
 
     private final String userName;
 
-    public ApiKeyPromptScreen(Config config, String userName, int width, int height) {
+    public ApiKeyPromptScreen(
+        Config config,
+        String userName,
+        int width,
+        int height
+    ) {
         super(config, "your API key", 256);
         this.userName = userName;
         this.width = width;
@@ -38,11 +42,19 @@ public class ApiKeyPromptScreen extends ConfigPromptScreen {
     @Override
     protected UpdateResult<? extends Model> onSubmit(String apiKey) {
         config.setApiKey(apiKey);
+        if (!config.hasResolvedApiKey()) {
+            return UpdateResult.from(this);
+        }
         return transitionToChat(config, userName, width, height);
     }
 
     /** Shared transition to ChatConversationScreen. */
-    public static UpdateResult<? extends Model> transitionToChat(Config config, String name, int width, int height) {
+    public static UpdateResult<? extends Model> transitionToChat(
+        Config config,
+        String name,
+        int width,
+        int height
+    ) {
         Conversation.ConversationBuilder convoBuilder = Conversation.builder()
             .id("c_" + UUID.randomUUID())
             .createdAt(OffsetDateTime.now(ZoneOffset.UTC))
@@ -56,7 +68,14 @@ public class ApiKeyPromptScreen extends ConfigPromptScreen {
         }
 
         Conversation convo = convoBuilder.build();
-        ChatConversationScreen next = new ChatConversationScreen(name, convo, config, width, height, needsModelSelection);
+        ChatConversationScreen next = new ChatConversationScreen(
+            name,
+            convo,
+            config,
+            width,
+            height,
+            needsModelSelection
+        );
         return UpdateResult.from(
             next,
             batch(
@@ -66,4 +85,3 @@ public class ApiKeyPromptScreen extends ConfigPromptScreen {
         );
     }
 }
-

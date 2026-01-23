@@ -1,7 +1,6 @@
 package com.williamcallahan.chatclient.ui;
 
 import com.williamcallahan.tui4j.compat.lipgloss.Style;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,18 +22,21 @@ public final class PaletteOverlay {
      * @return Rendered lines with top row position, or null if too small
      */
     public static Overlay render(
-            List<? extends PaletteItem> items,
-            int selectedIndex,
-            String title,
-            String searchQuery,
-            int innerWidth,
-            int innerHeight,
-            int dividerRow) {
-
+        List<? extends PaletteItem> items,
+        int selectedIndex,
+        String title,
+        String searchQuery,
+        int innerWidth,
+        int innerHeight,
+        int dividerRow
+    ) {
         if (innerWidth < 20 || innerHeight < 10) return null;
 
         int total = items.size();
-        int maxItems = Math.max(1, Math.min(Math.max(1, total), innerHeight - 9));
+        int maxItems = Math.max(
+            1,
+            Math.min(Math.max(1, total), innerHeight - 9)
+        );
 
         int boxWidth = Math.max(24, Math.min(64, innerWidth - 6));
         int innerBoxWidth = boxWidth - 2;
@@ -46,7 +48,10 @@ public final class PaletteOverlay {
 
         int scrollTop = 0;
         if (total > maxItems) {
-            scrollTop = Math.max(0, Math.min(total - maxItems, selectedIndex - (maxItems / 2)));
+            scrollTop = Math.max(
+                0,
+                Math.min(total - maxItems, selectedIndex - (maxItems / 2))
+            );
         }
 
         Style borderStyle = Style.newStyle().foreground(TuiTheme.BORDER);
@@ -57,32 +62,61 @@ public final class PaletteOverlay {
         box.add(borderStyle.render("┌" + "─".repeat(boxWidth - 2) + "┐"));
 
         String titleRendered = titleStyle.render(title);
-        String titleLine = borderStyle.render("│") + TuiTheme.padRight(" " + titleRendered, innerBoxWidth) + borderStyle.render("│");
+        String titleLine =
+            borderStyle.render("│") +
+            TuiTheme.padRight(" " + titleRendered, innerBoxWidth) +
+            borderStyle.render("│");
         box.add(titleLine);
         box.add(borderStyle.render("├" + "─".repeat(boxWidth - 2) + "┤"));
 
+        // Clamp selectedIndex to valid bounds
+        int clampedSelectedIndex = (total > 0)
+            ? Math.max(0, Math.min(selectedIndex, total - 1))
+            : -1;
+
         if (items.isEmpty()) {
             String none = hintStyle.render("No matches");
-            box.add(borderStyle.render("│") + TuiTheme.padRight(" " + none, innerBoxWidth) + borderStyle.render("│"));
+            box.add(
+                borderStyle.render("│") +
+                    TuiTheme.padRight(" " + none, innerBoxWidth) +
+                    borderStyle.render("│")
+            );
             for (int i = 1; i < maxItems; i++) {
-                box.add(borderStyle.render("│") + " ".repeat(innerBoxWidth) + borderStyle.render("│"));
+                box.add(
+                    borderStyle.render("│") +
+                        " ".repeat(innerBoxWidth) +
+                        borderStyle.render("│")
+                );
             }
         } else {
             for (int i = 0; i < maxItems; i++) {
                 int idx = scrollTop + i;
-                PaletteItem item = (idx >= 0 && idx < total) ? items.get(idx) : null;
+                PaletteItem item = (idx >= 0 && idx < total)
+                    ? items.get(idx)
+                    : null;
 
                 String rowText;
                 if (item == null) {
                     rowText = "";
-                } else if (idx == selectedIndex) {
-                    rowText = "\u001b[7m" + TuiTheme.padRight(" " + item.name() + "  " + item.description(), innerBoxWidth) + "\u001b[0m";
+                } else if (idx == clampedSelectedIndex) {
+                    rowText =
+                        "\u001b[7m" +
+                        TuiTheme.padRight(
+                            " " + item.name() + "  " + item.description(),
+                            innerBoxWidth
+                        ) +
+                        "\u001b[0m";
                 } else {
                     String left = titleStyle.render(item.name());
                     String right = hintStyle.render(item.description());
-                    rowText = TuiTheme.padRight(" " + left + "  " + right, innerBoxWidth);
+                    rowText = TuiTheme.padRight(
+                        " " + left + "  " + right,
+                        innerBoxWidth
+                    );
                 }
-                box.add(borderStyle.render("│") + rowText + borderStyle.render("│"));
+                box.add(
+                    borderStyle.render("│") + rowText + borderStyle.render("│")
+                );
             }
         }
 
@@ -95,7 +129,11 @@ public final class PaletteOverlay {
         }
         String help = hintStyle.render("↑/↓  enter  esc  type to filter");
         String footer = searchPart + help;
-        box.add(borderStyle.render("│") + TuiTheme.padRight(" " + footer, innerBoxWidth) + borderStyle.render("│"));
+        box.add(
+            borderStyle.render("│") +
+                TuiTheme.padRight(" " + footer, innerBoxWidth) +
+                borderStyle.render("│")
+        );
         box.add(borderStyle.render("└" + "─".repeat(boxWidth - 2) + "┘"));
 
         List<String> overlayLines = new ArrayList<>(box.size());
@@ -103,7 +141,15 @@ public final class PaletteOverlay {
             String padded = " ".repeat(leftPad) + line;
             overlayLines.add(TuiTheme.padRight(padded, innerWidth));
         }
-        Layout layout = new Layout(top, leftPad, boxWidth, innerBoxWidth, maxItems, scrollTop, total);
+        Layout layout = new Layout(
+            top,
+            leftPad,
+            boxWidth,
+            innerBoxWidth,
+            maxItems,
+            scrollTop,
+            total
+        );
         return new Overlay(top, overlayLines, layout);
     }
 
@@ -120,13 +166,13 @@ public final class PaletteOverlay {
     public record Overlay(int topRow, List<String> lines, Layout layout) {}
 
     public record Layout(
-            int topRow,
-            int leftCol,
-            int boxWidth,
-            int innerBoxWidth,
-            int maxItems,
-            int scrollTop,
-            int totalItems
+        int topRow,
+        int leftCol,
+        int boxWidth,
+        int innerBoxWidth,
+        int maxItems,
+        int scrollTop,
+        int totalItems
     ) {
         int boxHeight() {
             return maxItems + 6;
@@ -144,10 +190,12 @@ public final class PaletteOverlay {
         }
 
         boolean contains(int column, int row) {
-            return column >= leftCol
-                    && row >= topRow
-                    && column < leftCol + boxWidth
-                    && row < topRow + boxHeight();
+            return (
+                column >= leftCol &&
+                row >= topRow &&
+                column < leftCol + boxWidth &&
+                row < topRow + boxHeight()
+            );
         }
 
         int itemIndexAt(int column, int row) {

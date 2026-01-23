@@ -8,7 +8,6 @@ import com.williamcallahan.chatclient.domain.Conversation;
 import com.williamcallahan.chatclient.domain.Role;
 import com.williamcallahan.chatclient.domain.ToolCall;
 import com.williamcallahan.chatclient.service.tools.Tool;
-
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -20,9 +19,12 @@ import java.util.logging.Logger;
 /** Executes tool calls requested by the LLM, feeding results back until completion. */
 public final class ToolExecutor {
 
-    private static final Logger LOG = Logger.getLogger(ToolExecutor.class.getName());
+    private static final Logger LOG = Logger.getLogger(
+        ToolExecutor.class.getName()
+    );
     private static final ObjectMapper JSON = new ObjectMapper();
-    private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {};
+    private static final TypeReference<Map<String, Object>> MAP_REF =
+        new TypeReference<>() {};
     private static final int MAX_ITERATIONS = 3;
 
     private static final String SYSTEM_PROMPT = """
@@ -44,7 +46,10 @@ public final class ToolExecutor {
     }
 
     public String respond(Conversation conversation, String modelOverride) {
-        ChatCompletionCreateParams.Builder builder = buildParams(conversation, modelOverride);
+        ChatCompletionCreateParams.Builder builder = buildParams(
+            conversation,
+            modelOverride
+        );
         for (Tool tool : tools) {
             builder.addFunctionTool(tool.definition());
         }
@@ -53,7 +58,9 @@ public final class ToolExecutor {
 
         for (int step = 0; step < MAX_ITERATIONS; step++) {
             ChatCompletion completion = chat.complete(builder.build());
-            ChatCompletionMessage msg = completion.choices().stream()
+            ChatCompletionMessage msg = completion
+                .choices()
+                .stream()
                 .findFirst()
                 .map(c -> c.message())
                 .orElse(null);
@@ -62,13 +69,16 @@ public final class ToolExecutor {
                 return "Unable to get a response. Please try again.";
             }
 
-            List<ChatCompletionMessageToolCall> toolCalls = msg.toolCalls().orElse(List.of());
+            List<ChatCompletionMessageToolCall> toolCalls = msg
+                .toolCalls()
+                .orElse(List.of());
             if (toolCalls.isEmpty()) {
                 return msg.content().orElse("");
             }
 
             builder.addMessage(msg.toParam());
-            List<ChatCompletionMessageToolCall> functionCalls = toolCalls.stream()
+            List<ChatCompletionMessageToolCall> functionCalls = toolCalls
+                .stream()
                 .filter(ChatCompletionMessageToolCall::isFunction)
                 .toList();
 
@@ -81,63 +91,138 @@ public final class ToolExecutor {
         return "ERROR: tool loop did not resolve to a final assistant message.";
     }
 
-    private void saveAssistantMessage(Conversation conversation, ChatCompletionMessage msg,
-            List<ChatCompletionMessageToolCall> functionCalls, String model) {
-        List<ToolCall> domainCalls = functionCalls.stream().map(this::toDomainToolCall).toList();
-        conversation.addMessage(new ChatMessage(
-            "asst_" + shortId(), conversation.getId(), conversation.getMessages().size(),
-            Role.ASSISTANT, ChatMessage.Source.LLM_OUTPUT, msg.content().orElse(""),
-            OffsetDateTime.now(ZoneOffset.UTC), model, conversation.getProvider().name().toLowerCase(),
-            null, domainCalls, null, null, null));
+    private void saveAssistantMessage(
+        Conversation conversation,
+        ChatCompletionMessage msg,
+        List<ChatCompletionMessageToolCall> functionCalls,
+        String model
+    ) {
+        List<ToolCall> domainCalls = functionCalls
+            .stream()
+            .map(this::toDomainToolCall)
+            .toList();
+        conversation.addMessage(
+            new ChatMessage(
+                "asst_" + shortId(),
+                conversation.getId(),
+                conversation.getMessages().size(),
+                Role.ASSISTANT,
+                ChatMessage.Source.LLM_OUTPUT,
+                msg.content().orElse(""),
+                OffsetDateTime.now(ZoneOffset.UTC),
+                model,
+                conversation.getProvider().name().toLowerCase(),
+                null,
+                domainCalls,
+                null,
+                null,
+                null
+            )
+        );
     }
 
-    private void executeAndSave(Conversation conversation, ChatCompletionCreateParams.Builder builder,
-            ChatCompletionMessageToolCall toolCall, String model) {
+    private void executeAndSave(
+        Conversation conversation,
+        ChatCompletionCreateParams.Builder builder,
+        ChatCompletionMessageToolCall toolCall,
+        String model
+    ) {
         var fn = toolCall.asFunction();
         String toolCallId = fn.id();
         String toolName = fn.function().name();
         Map<String, Object> args = parseArgs(fn.function().arguments());
 
-        Tool tool = tools.stream().filter(t -> t.name().equals(toolName)).findFirst().orElse(null);
+        Tool tool = tools
+            .stream()
+            .filter(t -> t.name().equals(toolName))
+            .findFirst()
+            .orElse(null);
 
         Object result;
         try {
-            if (tool == null) throw new IllegalArgumentException("Unknown tool: " + toolName);
+            if (tool == null) throw new IllegalArgumentException(
+                "Unknown tool: " + toolName
+            );
             result = tool.execute(args);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Tool execution failed: " + toolName, e);
-            result = Map.of("error", e.getMessage() == null ? "Error" : e.getMessage());
+            result = Map.of(
+                "error",
+                e.getMessage() == null ? "Error" : e.getMessage()
+            );
         }
 
         String resultText;
-        try { resultText = JSON.writerWithDefaultPrettyPrinter().writeValueAsString(result); }
-        catch (Exception e) { resultText = String.valueOf(result); }
+        try {
+            resultText =
+                JSON.writerWithDefaultPrettyPrinter().writeValueAsString(
+                    result
+                );
+        } catch (Exception e) {
+            resultText = String.valueOf(result);
+        }
 
-        conversation.addMessage(new ChatMessage(
-            "tool_" + shortId(), conversation.getId(), conversation.getMessages().size(),
-            Role.TOOL, ChatMessage.Source.TOOL_OUTPUT, resultText,
-            OffsetDateTime.now(ZoneOffset.UTC), model, conversation.getProvider().name().toLowerCase(),
-            null, null, toolCallId, null, null));
+        conversation.addMessage(
+            new ChatMessage(
+                "tool_" + shortId(),
+                conversation.getId(),
+                conversation.getMessages().size(),
+                Role.TOOL,
+                ChatMessage.Source.TOOL_OUTPUT,
+                resultText,
+                OffsetDateTime.now(ZoneOffset.UTC),
+                model,
+                conversation.getProvider().name().toLowerCase(),
+                null,
+                null,
+                toolCallId,
+                null,
+                null
+            )
+        );
 
-        builder.addMessage(ChatCompletionToolMessageParam.builder()
-            .toolCallId(toolCallId).contentAsJson(result).build());
+        builder.addMessage(
+            ChatCompletionToolMessageParam.builder()
+                .toolCallId(toolCallId)
+                .contentAsJson(result)
+                .build()
+        );
     }
 
     private ToolCall toDomainToolCall(ChatCompletionMessageToolCall tc) {
         var fn = tc.asFunction();
-        return new ToolCall(fn.id(), fn.id(), fn.function().name(),
-            parseArgs(fn.function().arguments()), ToolCall.Status.PENDING, null, null);
+        String providerId = fn.id();
+        String internalId = "tc_" + shortId();
+        return new ToolCall(
+            internalId,
+            providerId,
+            fn.function().name(),
+            parseArgs(fn.function().arguments()),
+            ToolCall.Status.PENDING,
+            null,
+            null
+        );
     }
 
-    private ChatCompletionCreateParams.Builder buildParams(Conversation conversation, String modelOverride) {
-        ChatCompletionCreateParams.Builder b = ChatCompletionCreateParams.builder();
-        b.model(modelOverride != null && !modelOverride.isBlank() ? modelOverride : conversation.getDefaultModel());
+    private ChatCompletionCreateParams.Builder buildParams(
+        Conversation conversation,
+        String modelOverride
+    ) {
+        ChatCompletionCreateParams.Builder b =
+            ChatCompletionCreateParams.builder();
+        b.model(
+            modelOverride != null && !modelOverride.isBlank()
+                ? modelOverride
+                : conversation.getDefaultModel()
+        );
         b.temperature(0.3);
 
         b.addSystemMessage(SYSTEM_PROMPT);
 
         List<ChatMessage> messages = conversation.getMessages();
-        ChatMessage last = messages.isEmpty() ? null : messages.get(messages.size() - 1);
+        ChatMessage last = messages.isEmpty()
+            ? null
+            : messages.get(messages.size() - 1);
 
         for (ChatMessage m : messages) {
             if (shouldSkipMessage(m, last)) continue;
@@ -148,18 +233,29 @@ public final class ToolExecutor {
 
     private boolean shouldSkipMessage(ChatMessage m, ChatMessage last) {
         boolean hasContent = m.content() != null && !m.content().isBlank();
-        boolean hasToolCalls = m.toolCalls() != null && !m.toolCalls().isEmpty();
-        boolean isToolResponse = m.role() == Role.TOOL && m.toolCallId() != null;
+        boolean hasToolCalls =
+            m.toolCalls() != null && !m.toolCalls().isEmpty();
+        boolean isToolResponse =
+            m.role() == Role.TOOL && m.toolCallId() != null;
 
         if (!hasContent && !hasToolCalls && !isToolResponse) return true;
         return m.source() == ChatMessage.Source.INTERNAL && m != last;
     }
 
-    private void appendMessage(ChatCompletionCreateParams.Builder b, ChatMessage m) {
+    private void appendMessage(
+        ChatCompletionCreateParams.Builder b,
+        ChatMessage m
+    ) {
         String content = contentOrEmpty(m);
         switch (m.role()) {
-            case SYSTEM -> { if (!content.isBlank()) b.addSystemMessage(content); }
-            case USER -> { if (shouldIncludeUserMessage(m, content)) b.addUserMessage(content); }
+            case SYSTEM -> {
+                if (!content.isBlank()) b.addSystemMessage(content);
+            }
+            case USER -> {
+                if (shouldIncludeUserMessage(m, content)) b.addUserMessage(
+                    content
+                );
+            }
             case ASSISTANT -> appendAssistantMessage(b, m, content);
             case TOOL -> appendToolMessage(b, m, content);
         }
@@ -167,10 +263,17 @@ public final class ToolExecutor {
 
     static boolean shouldIncludeUserMessage(ChatMessage m, String content) {
         if (content == null || content.isBlank()) return false;
-        return m.source() == ChatMessage.Source.USER_INPUT || m.source() == ChatMessage.Source.INTERNAL;
+        return (
+            m.source() == ChatMessage.Source.USER_INPUT ||
+            m.source() == ChatMessage.Source.INTERNAL
+        );
     }
 
-    private void appendAssistantMessage(ChatCompletionCreateParams.Builder b, ChatMessage m, String content) {
+    private void appendAssistantMessage(
+        ChatCompletionCreateParams.Builder b,
+        ChatMessage m,
+        String content
+    ) {
         if (m.source() != ChatMessage.Source.LLM_OUTPUT) return;
 
         List<ToolCall> toolCalls = m.toolCalls();
@@ -191,20 +294,28 @@ public final class ToolExecutor {
     private ChatCompletionMessageFunctionToolCall buildToolCall(ToolCall tc) {
         return ChatCompletionMessageFunctionToolCall.builder()
             .id(tc.id())
-            .function(ChatCompletionMessageFunctionToolCall.Function.builder()
-                .name(tc.name())
-                .arguments(toJson(tc.arguments()))
-                .build())
+            .function(
+                ChatCompletionMessageFunctionToolCall.Function.builder()
+                    .name(tc.name())
+                    .arguments(toJson(tc.arguments()))
+                    .build()
+            )
             .build();
     }
 
-    private void appendToolMessage(ChatCompletionCreateParams.Builder b, ChatMessage m, String content) {
+    private void appendToolMessage(
+        ChatCompletionCreateParams.Builder b,
+        ChatMessage m,
+        String content
+    ) {
         String toolCallId = m.toolCallId();
         if (toolCallId == null || content.isBlank()) return;
-        b.addMessage(ChatCompletionToolMessageParam.builder()
-            .toolCallId(toolCallId)
-            .content(content)
-            .build());
+        b.addMessage(
+            ChatCompletionToolMessageParam.builder()
+                .toolCallId(toolCallId)
+                .content(content)
+                .build()
+        );
     }
 
     private static String contentOrEmpty(ChatMessage m) {
@@ -218,8 +329,11 @@ public final class ToolExecutor {
 
     private static Map<String, Object> parseArgs(String json) {
         if (json == null || json.isBlank()) return Map.of();
-        try { return JSON.readValue(json, MAP_REF); }
-        catch (Exception e) { throw new IllegalArgumentException("Invalid JSON: " + json, e); }
+        try {
+            return JSON.readValue(json, MAP_REF);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid JSON: " + json, e);
+        }
     }
 
     private static String toJson(Map<String, Object> args) {
@@ -227,7 +341,10 @@ public final class ToolExecutor {
         try {
             return JSON.writeValueAsString(args);
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to serialize tool arguments", e);
+            throw new IllegalStateException(
+                "Failed to serialize tool arguments",
+                e
+            );
         }
     }
 }
