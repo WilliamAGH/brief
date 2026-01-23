@@ -10,8 +10,8 @@ val tui4jLocalRequested = listOf(
     System.getenv("TUI4J_LOCAL"),
 ).any { it == "true" }
 val isCi = (System.getenv("CI") == "true") || (System.getenv("GITHUB_ACTIONS") == "true")
-val tui4jSnapshotVersion = "0.3.0-PREVIEW"
-val tui4jReleaseVersion = "0.3.0-PREVIEW"
+val tui4jSnapshotVersion = "0.3.0-preview"
+val tui4jReleaseVersion = "0.3.0-preview"
 val tui4jJlineVersion = "3.26.1"
 val tui4jIcuVersion = "76.1"
 val tui4jCommonsTextVersion = "1.13.0"
