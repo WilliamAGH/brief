@@ -6,7 +6,7 @@ description: "Evergreen contract for change decisions (new file vs edit), reposi
 
 # Code Change Policy Contract
 
-See `AGENTS.md` ([LOC1a], [MO1a], [DEP1]).
+See `AGENTS.md` ([LOC1], [MO1], [DEP1]).
 
 ## Non-negotiables (applies to every change)
 
@@ -48,7 +48,7 @@ If any bullet fails, create a new type.
 
 ### Package structure
 
-- `com.williamcallahan.brief.**`: Core library packages.
+- `com.williamcallahan.chatclient.**`: Core library packages.
 
 ### Naming conventions
 

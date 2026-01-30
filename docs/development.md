@@ -83,7 +83,7 @@ The `.github/workflows/build.yml` workflow:
 
 ```kotlin
 plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 ```
 
@@ -95,7 +95,6 @@ Enables **auto-download** of Temurin JDK if missing.
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
-        vendor = JvmVendorSpec.ADOPTOPENJDK
     }
 }
 ```
@@ -195,20 +194,20 @@ make release V=0.2.0
 
 ## Troubleshooting
 
-#### "gradle: command not found"
+### "gradle: command not found"
 - Run `mise install` or `asdf install` to set `JAVA_HOME`
 - Verify: `echo $JAVA_HOME` should point to a Temurin 25 JDK
 
-#### Gradle downloads JDK every time
-- Ensure `settings.gradle.kts` has Foojay resolver (v0.9.0)
+### Gradle downloads JDK every time
+- Ensure `settings.gradle.kts` has Foojay resolver (1.0.0)
 - Check `~/.gradle/jdks/` for cached toolchains
 
-#### IntelliJ doesn't pick up Java version
+### IntelliJ doesn't pick up Java version
 - Open IntelliJ settings → Build, Execution, Deployment → Gradle
 - Set "Gradle JVM" to "Use JAVA_HOME"
 - Set "Project SDK" to Temurin 25 (or refresh if auto-detected)
 
-#### CI build fails but local works
+### CI build fails but local works
 - Check CI logs for Java version (e.g., `java -version`)
 - Ensure your local patch matches
 - If CI is on 25.0.4 and you're on 25.0.3, bump locally and re-test
