@@ -25,7 +25,7 @@ build:
 	@JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew installDist -q 2>&1 | grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true
 
 test:
-	@JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew test 2>&1 | grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true
+	@JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew test -q 2>&1 | grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true
 
 local-tui:
 	@cd ../tui4j && ./gradlew jar
