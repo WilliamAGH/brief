@@ -30,6 +30,29 @@ Download from [releases](https://github.com/WilliamAGH/brief/releases/latest). R
 
 ## Development
 
+### Prerequisites
+
+This project uses **Gradle Toolchains** with **Temurin JDK 25** and **mise** (or **asdf**) for reproducible builds.
+
+**Option 1: Using mise (recommended)**
+
+```bash
+# Install mise if you don't have it: https://mise.jdnow.dev/
+mise install
+```
+
+**Option 2: Using asdf**
+
+```bash
+# Install asdf if you don't have it: https://asdf-vm.com/
+asdf plugin add java https://github.com/halcyon/asdf-java.git
+asdf install
+```
+
+**What happens**: Gradle Toolchains will auto-download Temurin JDK 25 on first build if not present locally. The `mise`/`asdf` setup ensures your shell and IDE use the correct Java version.
+
+### Running
+
 ```bash
 git clone https://github.com/WilliamAGH/brief.git
 cd brief
@@ -37,7 +60,9 @@ cp .env-example .env   # add your API key
 make run
 ```
 
-Commands: `make run` | `make build` | `make clean`
+Commands: `make run` | `make build` | `make clean` | `make dist`
+
+See [docs/development.md](docs/development.md) for more details.
 
 ## Contributing
 
