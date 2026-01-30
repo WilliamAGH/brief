@@ -25,11 +25,21 @@ final class ComposerViewLines {
             lines.remove(lines.size() - 1);
         }
 
-        // Textarea.view() always appends height padding lines; drop them.
-        int trim = composer.height();
-        int keep = Math.max(1, lines.size() - trim);
-        if (keep < lines.size()) {
-            lines = new ArrayList<>(lines.subList(0, keep));
+        // Trim trailing empty lines (padding), but keep at least 1 line.
+        // Also keep at least as many lines as there are logical lines in the buffer
+        // to prevent hiding explicit newlines (which appear empty visually).
+        int minKeep = Math.max(1, composer.lineCount());
+        String plainPrompt = PROMPT.trim();
+        
+        while (lines.size() > minKeep) {
+            String last = lines.get(lines.size() - 1);
+            String plain = TuiTheme.stripAnsi(last).trim();
+            // Check if the line is effectively empty (just prompt/border padding or whitespace)
+            if (plain.isEmpty() || plain.equals(plainPrompt)) {
+                lines.remove(lines.size() - 1);
+            } else {
+                break;
+            }
         }
 
         if (lines.size() > 1) {
