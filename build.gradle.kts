@@ -26,7 +26,6 @@ val tui4jRemoteRequested =
     tui4jSourceOverride == "maven" || tui4jSourceOverride == "remote"
 val isCi = (System.getenv("CI") == "true") || (System.getenv("GITHUB_ACTIONS") == "true")
 val tui4jSnapshotVersion = "0.3.1-preview"
-val tui4jReleaseVersion = "0.3.0-preview"
 val tui4jJlineVersion = "3.26.1"
 val tui4jIcuVersion = "76.1"
 val tui4jCommonsTextVersion = "1.13.0"
@@ -47,7 +46,7 @@ val tui4jLocalEnabled = when {
     tui4jLocalRequested -> true
     else -> !isCi && tui4jLocalJarExists
 }
-val tui4jVersion = if (tui4jLocalEnabled) tui4jSnapshotVersion else tui4jReleaseVersion
+val tui4jVersion = tui4jSnapshotVersion
 
 application {
     mainClass = "com.williamcallahan.chatclient.Main"
