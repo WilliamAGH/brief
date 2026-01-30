@@ -162,13 +162,19 @@ make build
 # Run
 make run
 
+# Run against local tui4j (builds tui4j first)
+make run-local
+
+# Force Maven tui4j even if local jar exists
+TUI4J_SOURCE=maven make run
+
 # Clean
 make clean
 
 # Test
 ./gradlew test
 
-# Local TUI4J (for development)
+# Local TUI4J tests (builds tui4j first)
 make run-local-tui
 
 # Create distribution
@@ -206,6 +212,28 @@ make release V=0.2.0
 - Check CI logs for Java version (e.g., `java -version`)
 - Ensure your local patch matches
 - If CI is on 25.0.4 and you're on 25.0.3, bump locally and re-test
+
+---
+
+## TUI4J source selection
+
+By default, the build will use a local tui4j jar if one exists, unless running in CI.
+You can override this explicitly:
+
+```bash
+# Use local tui4j jar
+TUI4J_SOURCE=local make run
+
+# Force Maven tui4j artifact
+TUI4J_SOURCE=maven make run
+```
+
+Gradle property form is also supported:
+
+```bash
+./gradlew -Ptui4jSource=local installDist
+./gradlew -Ptui4jSource=maven installDist
+```
 
 ---
 

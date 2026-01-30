@@ -9,15 +9,23 @@ version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?:
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
-        vendor = JvmVendorSpec.ADOPTOPENJDK
     }
 }
-val tui4jLocalRequested = listOf(
-    findProperty("tui4jLocal")?.toString(),
-    System.getenv("TUI4J_LOCAL"),
-).any { it == "true" }
+val tui4jSourceOverride = listOf(
+    findProperty("tui4jSource")?.toString(),
+    System.getenv("TUI4J_SOURCE"),
+).firstOrNull { !it.isNullOrBlank() }
+    ?.lowercase()
+val tui4jLocalRequested =
+    tui4jSourceOverride == "local" ||
+    listOf(
+        findProperty("tui4jLocal")?.toString(),
+        System.getenv("TUI4J_LOCAL"),
+    ).any { it == "true" }
+val tui4jRemoteRequested =
+    tui4jSourceOverride == "maven" || tui4jSourceOverride == "remote"
 val isCi = (System.getenv("CI") == "true") || (System.getenv("GITHUB_ACTIONS") == "true")
-val tui4jSnapshotVersion = "0.3.0-preview"
+val tui4jSnapshotVersion = "0.3.1-preview"
 val tui4jReleaseVersion = "0.3.0-preview"
 val tui4jJlineVersion = "3.26.1"
 val tui4jIcuVersion = "76.1"
@@ -34,7 +42,11 @@ val tui4jLocalJarCandidates = listOfNotNull(
 val tui4jLocalJar = tui4jLocalJarCandidates.firstOrNull { it.exists() } ?: tui4jLocalJarCandidates.first()
 val tui4jLocalJarExists = tui4jLocalJarCandidates.any { it.exists() }
 // Auto-enable local JAR for developer ergonomics, but never on CI
-val tui4jLocalEnabled = tui4jLocalRequested || (!isCi && tui4jLocalJarExists)
+val tui4jLocalEnabled = when {
+    tui4jRemoteRequested -> false
+    tui4jLocalRequested -> true
+    else -> !isCi && tui4jLocalJarExists
+}
 val tui4jVersion = if (tui4jLocalEnabled) tui4jSnapshotVersion else tui4jReleaseVersion
 
 application {
@@ -62,9 +74,10 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind")
     compileOnly("org.projectlombok:lombok:edge-SNAPSHOT")
     annotationProcessor("org.projectlombok:lombok:edge-SNAPSHOT")
-    testImplementation(platform("org.junit:junit-bom:5.10.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(platform("org.junit:junit-bom:6.0.2"))
+    testImplementation("org.junit.jupiter:junit-jupiter:6.0.2")
+    testImplementation("org.mockito:mockito-core:5.21.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.2")
 }
 
 tasks.test {

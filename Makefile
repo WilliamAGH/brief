@@ -1,18 +1,37 @@
-.PHONY: run run-local-tui build clean dist local-tui release-test release
+.PHONY: run run-local run-local-tui build clean dist local-tui release-test release
 
 run: build
 	@set -a; [ -f .env ] && . ./.env; set +a; ./build/install/brief/bin/brief
 
+run-local:
+	@cd ../tui4j && ./gradlew jar
+	@TUI4J_LOCAL_JAR=$$(ls -t ../tui4j/build/libs/tui4j-*.jar 2>/dev/null | grep -v -e '-sources' -e '-javadoc' | head -n 1); \
+	if [ -z "$$TUI4J_LOCAL_JAR" ]; then \
+		echo "No local tui4j jar found in ../tui4j/build/libs"; \
+		exit 1; \
+	fi; \
+	TUI4J_LOCAL_PATH=$$TUI4J_LOCAL_JAR TUI4J_SOURCE=local $(MAKE) run
+
 run-local-tui:
 	@cd ../tui4j && ./gradlew jar
-	@TUI4J_LOCAL=true $(MAKE) run
+	@TUI4J_LOCAL_JAR=$$(ls -t ../tui4j/build/libs/tui4j-*.jar 2>/dev/null | grep -v -e '-sources' -e '-javadoc' | head -n 1); \
+	if [ -z "$$TUI4J_LOCAL_JAR" ]; then \
+		echo "No local tui4j jar found in ../tui4j/build/libs"; \
+		exit 1; \
+	fi; \
+	TUI4J_LOCAL_PATH=$$TUI4J_LOCAL_JAR TUI4J_SOURCE=local $(MAKE) run
 
 build:
 	@JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew installDist -q 2>&1 | grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true
 
 local-tui:
 	@cd ../tui4j && ./gradlew jar
-	@TUI4J_LOCAL=true ./gradlew test
+	@TUI4J_LOCAL_JAR=$$(ls -t ../tui4j/build/libs/tui4j-*.jar 2>/dev/null | grep -v -e '-sources' -e '-javadoc' | head -n 1); \
+	if [ -z "$$TUI4J_LOCAL_JAR" ]; then \
+		echo "No local tui4j jar found in ../tui4j/build/libs"; \
+		exit 1; \
+	fi; \
+	TUI4J_LOCAL_PATH=$$TUI4J_LOCAL_JAR TUI4J_SOURCE=local ./gradlew test
 
 clean:
 	@./gradlew clean 2>/dev/null
