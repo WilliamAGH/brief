@@ -7,16 +7,15 @@ import com.williamcallahan.tui4j.compat.bubbletea.input.MouseMessage;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * Manages mouse-based text selection and interaction within the chat history.
  * Tracks selection coordinates and maps them to visible history lines for highlighting and copying.
  */
 final class MouseSelectionController {
-    private static final Pattern URL_PATTERN = Pattern.compile(
-        "^(https?://|www\\.)[a-zA-Z0-9+&@#/%?=~_|!:,.;]*[a-zA-Z0-9+&@#/%=~_|]$"
-    );
+    private static final String STATUS_OPENED = "OPENED";
+    private static final String STATUS_COPIED = "COPIED";
+    private static final long STATUS_TIMEOUT_MS = 1200L;
 
     private boolean selecting = false;
     private boolean selectionMoved = false;
@@ -54,7 +53,7 @@ final class MouseSelectionController {
      */
     String transientStatus(long nowMs) {
         if (lastStatus == null) return null;
-        return (nowMs - lastActionAtMs) < 1200 ? lastStatus : null;
+        return (nowMs - lastActionAtMs) < STATUS_TIMEOUT_MS ? lastStatus : null;
     }
 
     /**
@@ -94,7 +93,25 @@ final class MouseSelectionController {
 
         List<Command> commands = new ArrayList<>();
 
-        // Manage mouse cursor shape based on state and hover position
+        updateCursorShape(mouse, visibleRowIndex, col, commands);
+
+        // Handle selection state transitions
+        if (mouse.getAction() == MouseAction.MouseActionPress && mouse.getButton() == MouseButton.MouseButtonLeft) {
+            return handleMousePress(visibleRowIndex, col, commands);
+        }
+
+        if (mouse.getAction() == MouseAction.MouseActionMotion && selecting) {
+            return handleMouseDrag(mouse, col, commands);
+        }
+
+        if (mouse.getAction() == MouseAction.MouseActionRelease && selecting) {
+            return handleMouseRelease(mouse, col, commands);
+        }
+
+        return commands.isEmpty() ? null : Command.batch(commands);
+    }
+
+    private void updateCursorShape(MouseMessage mouse, int visibleRowIndex, int col, List<Command> commands) {
         if (mouse.getAction() == MouseAction.MouseActionRelease && !selecting) {
             commands.add(Command.resetMouseCursor());
         } else if (selecting) {
@@ -103,7 +120,7 @@ final class MouseSelectionController {
             String line = (visibleRowIndex < visibleHistoryPlain.size()) ? visibleHistoryPlain.get(visibleRowIndex) : null;
             if (line != null && col < line.length()) {
                 String token = tokenAt(line, col);
-                if (isPotentialUrl(token)) {
+                if (UrlUtil.isPotentialUrl(token)) {
                     commands.add(Command.setMouseCursorPointer());
                 } else {
                     commands.add(Command.setMouseCursorText());
@@ -114,62 +131,59 @@ final class MouseSelectionController {
         } else {
             commands.add(Command.resetMouseCursor());
         }
+    }
 
-        // Handle selection state transitions
-        if (mouse.getAction() == MouseAction.MouseActionPress && mouse.getButton() == MouseButton.MouseButtonLeft) {
-            if (visibleRowIndex >= 0) {
-                int startLineIndex = clampLineIndex(absoluteLineIndexFromVisibleRow(visibleRowIndex));
-                if (startLineIndex == -1) {
-                    clearSelection();
-                    return Command.batch(commands);
-                }
-                selecting = true;
-                selectionMoved = false;
-                selectionStartLineIndex = startLineIndex;
-                selectionStartCol = col;
-                selectionEndLineIndex = startLineIndex;
-                selectionEndCol = col;
+    private Command handleMousePress(int visibleRowIndex, int col, List<Command> commands) {
+        if (visibleRowIndex >= 0) {
+            int startLineIndex = clampLineIndex(absoluteLineIndexFromVisibleRow(visibleRowIndex));
+            if (startLineIndex == -1) {
+                clearSelection();
+                return Command.batch(commands);
+            }
+            selecting = true;
+            selectionMoved = false;
+            selectionStartLineIndex = startLineIndex;
+            selectionStartCol = col;
+            selectionEndLineIndex = startLineIndex;
+            selectionEndCol = col;
+        } else {
+            clearSelection();
+        }
+        return Command.batch(commands);
+    }
+
+    private Command handleMouseDrag(MouseMessage mouse, int col, List<Command> commands) {
+        selectionMoved = true;
+        // Clamp motion to history area if it leaves
+        int targetLineIndex = clampLineIndexForRow(mouse.row());
+        if (targetLineIndex != -1) {
+            selectionEndLineIndex = targetLineIndex;
+        }
+        selectionEndCol = col;
+        return Command.batch(commands);
+    }
+
+    private Command handleMouseRelease(MouseMessage mouse, int col, List<Command> commands) {
+        selecting = false;
+        int targetLineIndex = clampLineIndexForRow(mouse.row());
+        if (targetLineIndex != -1) {
+            selectionEndLineIndex = targetLineIndex;
+        }
+        selectionEndCol = col;
+
+        if (!selectionMoved) {
+            boolean opened = openLinkUnderMouse(mouse.row(), mouse.column());
+            if (!opened) {
+                Command copyCmd = copySelectedHistoryLines();
+                if (copyCmd != null) commands.add(copyCmd);
             } else {
                 clearSelection();
             }
-            return Command.batch(commands);
+        } else {
+            Command copyCmd = copySelectedHistoryLines();
+            if (copyCmd != null) commands.add(copyCmd);
         }
-
-        if (mouse.getAction() == MouseAction.MouseActionMotion && selecting) {
-            selectionMoved = true;
-            // Clamp motion to history area if it leaves
-            int targetLineIndex = clampLineIndexForRow(mouse.row());
-            if (targetLineIndex != -1) {
-                selectionEndLineIndex = targetLineIndex;
-            }
-            selectionEndCol = col;
-            return Command.batch(commands);
-        }
-
-        if (mouse.getAction() == MouseAction.MouseActionRelease && selecting) {
-            selecting = false;
-            int targetLineIndex = clampLineIndexForRow(mouse.row());
-            if (targetLineIndex != -1) {
-                selectionEndLineIndex = targetLineIndex;
-            }
-            selectionEndCol = col;
-
-            if (!selectionMoved) {
-                boolean opened = openLinkUnderMouse(mouse.row(), mouse.column());
-                if (!opened) {
-                    Command copyCmd = copySelectedHistoryLines();
-                    if (copyCmd != null) commands.add(copyCmd);
-                } else {
-                    clearSelection();
-                }
-            } else {
-                Command copyCmd = copySelectedHistoryLines();
-                if (copyCmd != null) commands.add(copyCmd);
-            }
-            return Command.batch(commands);
-        }
-
-        return commands.isEmpty() ? null : Command.batch(commands);
+        return Command.batch(commands);
     }
 
     private int visibleLineIndex(int mouseRow) {
@@ -201,22 +215,6 @@ final class MouseSelectionController {
         return Math.min(historyWindowStartIndex + (mouseRow - historyStartRow), maxLineIndex);
     }
 
-    private boolean isPotentialUrl(String token) {
-        if (token == null) return false;
-        String t = token.trim();
-        // Simple heuristic: must contain a dot and start with common URL prefixes
-        // or look like a domain name.
-        t = stripPunctuation(t);
-        if (t.isEmpty()) return false;
-
-        return URL_PATTERN.matcher(t).matches() ||
-               (t.contains(".") && (t.toLowerCase().startsWith("http") || t.toLowerCase().startsWith("www")));
-    }
-
-    private String stripPunctuation(String t) {
-        return t.replaceAll("^[\"'\\[\\(<{`]+|[\"'\\]\\)>}`.,]+$", "");
-    }
-
     private boolean openLinkUnderMouse(int mouseRow, int mouseCol) {
         int visibleRowIndex = visibleLineIndex(mouseRow);
         if (visibleRowIndex < 0) return false;
@@ -229,30 +227,15 @@ final class MouseSelectionController {
         if (col >= line.length()) col = line.length() - 1;
 
         String token = tokenAt(line, col);
-        String url = normalizeUrl(token);
+        String url = UrlUtil.normalizeUrl(token);
         if (url == null) return false;
 
         if (openUrl(url)) {
             lastActionAtMs = System.currentTimeMillis();
-            lastStatus = "OPENED";
+            lastStatus = STATUS_OPENED;
             return true;
         }
         return false;
-    }
-
-    private String normalizeUrl(String token) {
-        if (token == null) return null;
-        String t = stripPunctuation(token.trim());
-        if (t.isEmpty()) return null;
-
-        if (t.toLowerCase().startsWith("http://") || t.toLowerCase().startsWith("https://")) return t;
-        if (t.toLowerCase().startsWith("www.")) return "https://" + t;
-
-        // Only return as URL if it matches our pattern
-        if (URL_PATTERN.matcher(t).matches()) {
-            return t.contains("://") ? t : "https://" + t;
-        }
-        return null;
     }
 
     private Command copySelectedHistoryLines() {
@@ -293,7 +276,7 @@ final class MouseSelectionController {
         if (result.isEmpty()) return null;
 
         lastActionAtMs = System.currentTimeMillis();
-        lastStatus = "COPIED";
+        lastStatus = STATUS_COPIED;
         return Command.copyToClipboard(result);
     }
 

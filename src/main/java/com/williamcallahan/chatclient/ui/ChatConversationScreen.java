@@ -3,11 +3,11 @@ package com.williamcallahan.chatclient.ui;
 import static com.williamcallahan.tui4j.compat.bubbletea.Command.batch;
 import static com.williamcallahan.tui4j.compat.bubbletea.Command.setWindowTitle;
 
+import com.williamcallahan.applemaps.AppleMaps;
 import com.williamcallahan.chatclient.Config;
 import com.williamcallahan.chatclient.domain.ChatMessage;
 import com.williamcallahan.chatclient.domain.Conversation;
 import com.williamcallahan.chatclient.domain.Role;
-import com.williamcallahan.applemaps.AppleMaps;
 import com.williamcallahan.chatclient.service.AppleMapsService;
 import com.williamcallahan.chatclient.service.ChatCompletionService;
 import com.williamcallahan.chatclient.service.OpenAiService;
@@ -192,7 +192,13 @@ public final class ChatConversationScreen
         this.summaryService = new SummaryService(chatCompletionService, config);
 
         // Configure Textarea for multi-line input
-        composer.setPrompt("> ");
+        composer.setPrompt("› ");
+        composer
+            .style()
+            .prompt(TuiTheme.inputPrompt())
+            .text(Style.newStyle().foreground(TuiTheme.PRIMARY))
+            .cursorLine(Style.newStyle().foreground(TuiTheme.PRIMARY))
+            .placeholder(TuiTheme.hint());
         composer.setPlaceholder("Ask me anything...");
         composer.setShowLineNumbers(false);
         composer.setEndOfBufferCharacter(' ');
@@ -285,7 +291,10 @@ public final class ChatConversationScreen
 
         // Handle pasted content - check config palette first
         if (msg instanceof PasteMessage paste) {
-            if (configPalette.isEditing() && configPalette.handlePaste(paste.content())) {
+            if (
+                configPalette.isEditing() &&
+                configPalette.handlePaste(paste.content())
+            ) {
                 return UpdateResult.from(this);
             }
             return handlePaste(paste.content());
@@ -728,10 +737,8 @@ public final class ChatConversationScreen
         innerLeft = frame.getBorderLeftSize() + frame.leftPadding();
         innerTop = 1; // Top border is now line 0, content starts at line 1
 
-        List<String> composerLines = renderComposer(innerWidth);
-        if (composerLines.isEmpty()) composerLines = List.of(
-            renderComposerLine("", 0, innerWidth, 0)
-        );
+        composer.setWidth(innerWidth - 2);
+        List<String> composerLines = ComposerViewLines.from(composer);
 
         String statusLeft = "";
         if (waiting) {
@@ -927,7 +934,7 @@ public final class ChatConversationScreen
         int row = innerTop + statusRowIndex;
         int col = innerLeft + commandsIndex;
         targets.add(
-            MouseTarget.click(
+            MouseTarget.button(
                 "toolbar.commands",
                 col,
                 row,
@@ -952,7 +959,7 @@ public final class ChatConversationScreen
             int index = layout.scrollTop() + i;
             int row = itemStartRow + i;
             targets.add(
-                MouseTarget.click(
+                MouseTarget.button(
                     prefix + ".item." + index,
                     itemStartCol,
                     row,
@@ -1096,7 +1103,9 @@ public final class ChatConversationScreen
             if (results.isEmpty()) {
                 placesOverlay.close();
                 return UpdateResult.from(this, () ->
-                    new LocalDisplayMessage("No places found for \"" + query + "\"")
+                    new LocalDisplayMessage(
+                        "No places found for \"" + query + "\""
+                    )
                 );
             }
             placesOverlay.open(query, results);
@@ -1106,7 +1115,8 @@ public final class ChatConversationScreen
             String error = e.getMessage();
             return UpdateResult.from(this, () ->
                 new LocalDisplayMessage(
-                    "Search failed: " + (error == null ? e.getClass().getSimpleName() : error)
+                    "Search failed: " +
+                        (error == null ? e.getClass().getSimpleName() : error)
                 )
             );
         }
@@ -1117,7 +1127,9 @@ public final class ChatConversationScreen
         String trimmed = input.trim();
         if (!trimmed.toLowerCase().startsWith("/locate")) return "";
         String rest = trimmed.substring("/locate".length()).trim();
-        if (rest.length() >= 2 && rest.startsWith("\"") && rest.endsWith("\"")) {
+        if (
+            rest.length() >= 2 && rest.startsWith("\"") && rest.endsWith("\"")
+        ) {
             rest = rest.substring(1, rest.length() - 1);
         }
         return rest;
@@ -1386,10 +1398,11 @@ public final class ChatConversationScreen
             List<String> empty = new ArrayList<>();
             Style emptyStyle = TuiTheme.hint();
             String emptyMsg = emptyStyle.render("Start a conversation...");
+            String blankLine = " ".repeat(wrapWidth);
             int pad = Math.max(0, maxLines / 2);
-            for (int i = 0; i < pad; i++) empty.add("");
+            for (int i = 0; i < pad; i++) empty.add(blankLine);
             empty.add(TuiTheme.center(emptyMsg, wrapWidth));
-            while (empty.size() < maxLines) empty.add("");
+            while (empty.size() < maxLines) empty.add(blankLine);
             List<String> visiblePlain = empty
                 .stream()
                 .map(TuiTheme::stripAnsi)
@@ -1579,110 +1592,5 @@ public final class ChatConversationScreen
         int i = s.length() - 1;
         while (i >= 0 && Character.isWhitespace(s.charAt(i))) i--;
         return s.substring(0, i + 1);
-    }
-
-    /**
-     * Renders a clean input panel without repeated prompts.
-     * Shows "› " on the first line only, continuation lines are indented.
-     * Cursor is shown as reverse-video block on the current position.
-     */
-    private List<String> renderComposer(int width) {
-        String value = composer.value();
-        if (value == null) value = "";
-
-        // Show placeholder if empty
-        if (value.isEmpty()) {
-            return List.of(renderPlaceholderLine(width));
-        }
-
-        // Split into lines (user creates lines with Shift+Enter)
-        String[] lines = value.split("\n", -1);
-
-        // Get cursor position
-        int cursorRow = composer.line();
-        int cursorCol = composer.lineInfo().columnOffset();
-
-        List<String> result = new ArrayList<>();
-        for (int i = 0; i < lines.length; i++) {
-            boolean hasCursor = (i == cursorRow);
-            int cursorPos = hasCursor ? cursorCol : -1;
-            result.add(renderComposerLine(lines[i], i, width, cursorPos));
-        }
-
-        return result;
-    }
-
-    /**
-     * Renders a single composer line with prompt on first line only.
-     * If cursorPos >= 0, renders cursor at that position.
-     */
-    private String renderComposerLine(
-        String text,
-        int lineIndex,
-        int width,
-        int cursorPos
-    ) {
-        Style promptStyle = TuiTheme.inputPrompt();
-        Style textStyle = Style.newStyle().foreground(TuiTheme.PRIMARY);
-
-        String prefix;
-        if (lineIndex == 0) {
-            prefix = promptStyle.render("› ");
-        } else {
-            prefix = "  "; // Indent continuation lines to align with first line
-        }
-
-        // Calculate available width for text (subtract prefix width)
-        int prefixWidth = 2;
-        int textWidth = width - prefixWidth;
-
-        // Build the text with cursor
-        StringBuilder sb = new StringBuilder();
-        sb.append(prefix);
-
-        if (cursorPos < 0) {
-            // No cursor on this line
-            String displayText = text;
-            if (TuiTheme.visualWidth(displayText) > textWidth) {
-                displayText = TuiTheme.truncate(displayText, textWidth);
-            }
-            sb.append(textStyle.render(displayText));
-        } else {
-            // Render with cursor
-            int pos = Math.min(cursorPos, text.length());
-
-            // Text before cursor
-            if (pos > 0) {
-                sb.append(textStyle.render(text.substring(0, pos)));
-            }
-
-            // Cursor character (reverse video)
-            String cursorChar = (pos < text.length())
-                ? String.valueOf(text.charAt(pos))
-                : " ";
-            sb.append("\u001b[7m").append(cursorChar).append("\u001b[0m");
-
-            // Text after cursor
-            if (pos + 1 < text.length()) {
-                sb.append(textStyle.render(text.substring(pos + 1)));
-            }
-        }
-
-        return TuiTheme.padRight(sb.toString(), width);
-    }
-
-    /**
-     * Renders the placeholder line when composer is empty.
-     */
-    private String renderPlaceholderLine(int width) {
-        Style promptStyle = TuiTheme.inputPrompt();
-        Style placeholderStyle = TuiTheme.hint();
-
-        String prefix = promptStyle.render("› ");
-        // Show cursor at start, then placeholder
-        String cursor = "\u001b[7m \u001b[0m";
-        String placeholder = placeholderStyle.render("Ask me anything...");
-
-        return TuiTheme.padRight(prefix + cursor + placeholder, width);
     }
 }
