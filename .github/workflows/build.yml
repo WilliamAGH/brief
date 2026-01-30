@@ -1,0 +1,41 @@
+name: Build & Test
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Temurin JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: gradle
+
+      - name: Log system & Java info (drift detection)
+        run: |
+          echo "=== Environment Info ==="
+          uname -a
+          echo "=== Java Version ==="
+          java -version
+          echo "=== Gradle Version ==="
+          ./gradlew --version
+
+      - name: Build application
+        run: ./gradlew build --no-daemon
+
+      - name: Run tests
+        run: ./gradlew test --no-daemon

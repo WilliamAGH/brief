@@ -5,6 +5,13 @@ plugins {
 
 group = "com.williamcallahan"
 version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.1.3-SNAPSHOT"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+        vendor = JvmVendorSpec.ADOPTOPENJDK
+    }
+}
 val tui4jLocalRequested = listOf(
     findProperty("tui4jLocal")?.toString(),
     System.getenv("TUI4J_LOCAL"),
