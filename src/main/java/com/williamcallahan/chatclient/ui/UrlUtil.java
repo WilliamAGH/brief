@@ -4,7 +4,10 @@ import java.util.regex.Pattern;
 
 final class UrlUtil {
     private static final Pattern URL_PATTERN = Pattern.compile(
-        "^(https?://|www\\.)[a-zA-Z0-9+&@#/%?=~_|!:,.;]*[a-zA-Z0-9+&@#/%=~_|]$"
+        "^(https?://|www\\.)[a-zA-Z0-9+&@#/%?=~_|!:,.;-]*[a-zA-Z0-9+&@#/%=~_|-]$"
+    );
+    private static final Pattern DOMAIN_PATTERN = Pattern.compile(
+        "^[a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)+(:\\d+)?([/?#].*)?$"
     );
 
     private UrlUtil() {}
@@ -17,8 +20,9 @@ final class UrlUtil {
         t = stripPunctuation(t);
         if (t.isEmpty()) return false;
 
-        return URL_PATTERN.matcher(t).matches() ||
-               (t.contains(".") && (t.toLowerCase().startsWith("http") || t.toLowerCase().startsWith("www")));
+        return URL_PATTERN.matcher(t).matches()
+            || DOMAIN_PATTERN.matcher(t).matches()
+            || (t.contains(".") && (t.toLowerCase().startsWith("http") || t.toLowerCase().startsWith("www")));
     }
 
     static String normalizeUrl(String token) {
@@ -29,7 +33,7 @@ final class UrlUtil {
         if (t.toLowerCase().startsWith("http://") || t.toLowerCase().startsWith("https://")) return t;
         if (t.toLowerCase().startsWith("www.")) return "https://" + t;
 
-        // Only return as URL if it matches our pattern
+        if (DOMAIN_PATTERN.matcher(t).matches()) return "https://" + t;
         if (URL_PATTERN.matcher(t).matches()) {
             return t.contains("://") ? t : "https://" + t;
         }
