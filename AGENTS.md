@@ -10,6 +10,8 @@
 - FMT1 Keep formatting and style consistent with the surrounding file.
 - TST1 Update or add tests when behavior changes; do not change behavior without coverage.
 - DEP1 Avoid unnecessary dependencies and unused code.
+- LOC1 Line Count: All written, non-generated source files <= 350 lines (SRP Enforcer; Zero Tolerance).
+- MO1 No Monoliths: Strict SRP; Decision Logic (New/Edit/Extract); OCP Extension.
 
 ## Details
 
@@ -25,6 +27,9 @@
 - FMT1 Follow existing spacing, imports, and ordering; avoid style changes unrelated to the task.
 - TST1 Prefer fast, focused tests; keep tests aligned with the public contract.
 - DEP1 Remove unused imports, dependencies, and dead code.
+- LOC1 Hard Cap: all written files <= 350 LOC. Enforcer: SRP/DDD. Zero Tolerance: no edits to >350 LOC files; split/retrofit first. Exempt: generated content.
+- MO1 Monoliths: avoid multi-concern files. Logic: New → New File; Bug → Edit; Logic → Extract. Strict SRP: separate logic by actor/reason. Boundary: typed contracts, inward deps.
+- Contract: `docs/contracts/code-change.md`
 
 ## Project-Specific
 

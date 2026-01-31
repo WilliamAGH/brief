@@ -5,13 +5,13 @@ import com.williamcallahan.chatclient.ui.WelcomeScreen;
 import com.williamcallahan.tui4j.compat.bubbletea.Model;
 import com.williamcallahan.tui4j.compat.bubbletea.Program;
 import com.williamcallahan.tui4j.input.kitty.KittyEnterKeyMappings;
-import org.jline.utils.Signals;
-
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.jline.utils.Signals;
 
 /** Entry point for the brief TUI. */
 public class Main {
+
     private static final Logger LOG = Logger.getLogger(Main.class.getName());
 
     private static final String DISABLE_AUTOWRAP = "\u001b[?7l";
@@ -23,11 +23,16 @@ public class Main {
 
     public static void main(String[] args) {
         // Register shutdown hook to reset terminal on JVM exit
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.print(RESET_TERMINAL);
-            System.out.print(ENABLE_AUTOWRAP);
-            System.out.flush();
-        }, "terminal-reset"));
+        Runtime.getRuntime().addShutdownHook(
+            new Thread(
+                () -> {
+                    System.out.print(RESET_TERMINAL);
+                    System.out.print(ENABLE_AUTOWRAP);
+                    System.out.flush();
+                },
+                "terminal-reset"
+            )
+        );
 
         // Handle SIGTSTP (Ctrl+Z) - reset terminal before suspend, restore on resume
         registerSuspendHandlers();
@@ -89,6 +94,7 @@ public class Main {
             }
             if (!"0".equals(mouseMode)) {
                 program = program.withMouseClicks();
+                program = program.withMouseTargetCursor();
             }
             program.run();
         } finally {
@@ -112,7 +118,12 @@ public class Main {
             return new ApiKeyPromptScreen(config, config.userName(), 80, 24);
         }
         // Both name and API key present - go directly to chat
-        return ApiKeyPromptScreen.transitionToChat(config, config.userName(), 80, 24).model();
+        return ApiKeyPromptScreen.transitionToChat(
+            config,
+            config.userName(),
+            80,
+            24
+        ).model();
     }
 
     /**
@@ -135,7 +146,11 @@ public class Main {
                 try {
                     sun.misc.Signal.raise(new sun.misc.Signal("TSTP"));
                 } catch (IllegalArgumentException e) {
-                    LOG.log(Level.FINE, "Failed to raise SIGTSTP; terminal reset but process not suspended", e);
+                    LOG.log(
+                        Level.FINE,
+                        "Failed to raise SIGTSTP; terminal reset but process not suspended",
+                        e
+                    );
                 }
             });
         } catch (IllegalArgumentException e) {

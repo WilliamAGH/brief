@@ -14,13 +14,13 @@ jobs:
 
     steps:
       - name: Checkout brief
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: '25-ea'
+          java-version: '25'
 
       - name: Extract version from tag
         id: version
