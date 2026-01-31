@@ -42,9 +42,12 @@ final class HistoryViewport {
         if (maxLines < 0) maxLines = 0;
 
         int maxScrollOffset = Math.max(0, totalLines - maxLines);
-        scrollOffsetLines = Math.max(0, Math.min(scrollOffsetLines, maxScrollOffset));
+        int effectiveScrollOffset = Math.max(
+            0,
+            Math.min(scrollOffsetLines, maxScrollOffset)
+        );
 
-        int endExclusive = Math.max(0, totalLines - scrollOffsetLines);
+        int endExclusive = Math.max(0, totalLines - effectiveScrollOffset);
         int startInclusive = Math.max(0, endExclusive - maxLines);
         return new Window(startInclusive, endExclusive);
     }
