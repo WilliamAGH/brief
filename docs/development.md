@@ -12,11 +12,11 @@ The project is configured to use **Gradle Toolchains** with **Temurin JDK 25** f
 
 ##### Option 1: Using mise (recommended)
 
-[mise](https://mise.jdnow.dev/) is a modern version manager that reads `.tool-versions`.
+[mise](https://mise.jdx.dev/) is a modern version manager that reads `.tool-versions`.
 
 ```bash
 # Install mise (one-time)
-curl https://mise.jdnow.dev | sh
+curl https://mise.run | sh
 
 # Then, in the repo:
 mise install
@@ -42,7 +42,7 @@ asdf install
 
 #### How It Works
 
-1. **`.tool-versions` file** pins `java = temurin 25`.
+1. **`.tool-versions` file** pins `java temurin-25`.
 2. **Gradle Wrapper** (`./gradlew`) pins Gradle 9.2.0.
 3. **Gradle Toolchains** auto-downloads Temurin JDK 25 if missing (enabled by Foojay resolver in `settings.gradle.kts`).
 4. **Result**: Consistent Java version across:
@@ -136,7 +136,7 @@ mise use java@temurin 25.0.4  # or asdf local java temurin-25.0.4
 
 # Update .tool-versions
 cat .tool-versions
-# java = temurin 25.0.4
+# java temurin-25.0.4
 
 # Commit with audit trail
 git add .tool-versions
@@ -241,6 +241,6 @@ Gradle property form is also supported:
 - [Gradle Toolchains](https://docs.gradle.org/current/userguide/toolchains.html)
 - [Foojay Resolver Convention](https://plugins.gradle.org/plugin/org.gradle.toolchains.foojay-resolver-convention)
 - [Eclipse Temurin JDK](https://adoptium.net/)
-- [mise version manager](https://mise.jdnow.dev/)
+- [mise version manager](https://mise.jdx.dev/)
 - [asdf version manager](https://asdf-vm.com/)
 - [TUI4J](https://github.com/WilliamAGH/tui4j)
