@@ -4,16 +4,7 @@ SHELL := /bin/bash
 run: build
 	@set -a; [ -f .env ] && . ./.env; set +a; ./build/install/brief/bin/brief
 
-run-local:
-	@cd ../tui4j && ./gradlew jar
-	@TUI4J_LOCAL_JAR=$$(ls -t ../tui4j/build/libs/tui4j-*.jar 2>/dev/null | grep -v -e '-sources' -e '-javadoc' | head -n 1); \
-	if [ -z "$$TUI4J_LOCAL_JAR" ]; then \
-		echo "No local tui4j jar found in ../tui4j/build/libs"; \
-		exit 1; \
-	fi; \
-	TUI4J_LOCAL_PATH=$$TUI4J_LOCAL_JAR TUI4J_SOURCE=local $(MAKE) run
-
-run-local-tui:
+run-local run-local-tui:
 	@cd ../tui4j && ./gradlew jar
 	@TUI4J_LOCAL_JAR=$$(ls -t ../tui4j/build/libs/tui4j-*.jar 2>/dev/null | grep -v -e '-sources' -e '-javadoc' | head -n 1); \
 	if [ -z "$$TUI4J_LOCAL_JAR" ]; then \
