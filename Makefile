@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 .PHONY: run run-local run-local-tui build clean dist local-tui release-test release test
 
 run: build
@@ -25,7 +26,7 @@ build:
 	@JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew installDist -q 2>&1 | grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true
 
 test:
-	@set -o pipefail; JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew test -q 2>&1 | grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true
+	@set -o pipefail; JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew test -q 2>&1 | { grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true; }
 
 local-tui:
 	@cd ../tui4j && ./gradlew jar
