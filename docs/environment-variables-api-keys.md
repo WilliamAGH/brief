@@ -38,7 +38,7 @@ config.priority=env
 | Variable | Values | Description |
 |----------|--------|-------------|
 | `BRIEF_ALT_SCREEN` | `1` | Alternate screen buffer (clears on exit) |
-| `BRIEF_MOUSE` | `all`, `btn`, `off` | Mouse tracking mode |
+| `BRIEF_MOUSE` | `0`/`off`/`native`, `1`/`all`, `wheel`/`btn`, `select` | Mouse tracking mode (default: `0`) |
 | `BRIEF_SHOW_TOOLS` | `1` | Show tool call messages |
 
 ## Alternative Providers
