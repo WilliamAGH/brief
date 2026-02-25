@@ -41,15 +41,12 @@ public class Main {
         // Set BRIEF_ALT_SCREEN=1 to enable the alternate screen.
         boolean useAlt = "1".equals(System.getenv("BRIEF_ALT_SCREEN"));
         // Mouse behavior:
-        // - unset: in-app drag-to-copy selection + wheel scroll (viewport-locked)
-        // - 0: native terminal selection/copy (no in-app wheel scrolling)
-        // - 1: tui4j mouse all-motion tracking (best wheel support; most terminals disable native selection)
-        // - wheel: wheel/click tracking only (often more compatible with native selection depending on terminal)
-        // - select: wheel + drag tracking; app copies selected lines (native selection disabled)
-        String mouseMode = System.getenv("BRIEF_MOUSE");
-        if (mouseMode == null || mouseMode.isBlank()) {
-            mouseMode = "select";
-        }
+        // - default/unset: native terminal selection/copy (no in-app wheel scrolling)
+        // - 0/off/native: native terminal selection/copy
+        // - 1/all: tui4j all-motion tracking (best wheel support; native selection usually disabled)
+        // - wheel/btn: wheel + click tracking (no drag-to-copy selection)
+        // - select: in-app drag-to-copy selection + wheel scrolling
+        String mouseMode = resolveMouseMode();
         // Default ON: disable terminal autowrap so full-width borders don't soft-wrap at the last column.
         // Set BRIEF_AUTOWRAP=1 to keep terminal default wrapping behavior.
         boolean disableAutoWrap = !"1".equals(System.getenv("BRIEF_AUTOWRAP"));
@@ -69,7 +66,8 @@ public class Main {
         // Terminal mode setup - only after config validation succeeds
         boolean enableSelectMouse = "select".equalsIgnoreCase(mouseMode);
         boolean enableAllMotionMouse = "1".equals(mouseMode);
-        boolean enableCellMotionMouse = enableSelectMouse;
+        boolean enableCellMotionMouse =
+            enableSelectMouse || "wheel".equals(mouseMode);
 
         if (disableAutoWrap) {
             System.out.print(DISABLE_AUTOWRAP);
@@ -162,5 +160,23 @@ public class Main {
         } catch (IllegalArgumentException e) {
             LOG.log(Level.FINE, "SIGCONT not available on this platform", e);
         }
+    }
+
+    static String normalizeMouseMode(String rawMode) {
+        if (rawMode == null || rawMode.isBlank()) {
+            return "0";
+        }
+        String mode = rawMode.trim().toLowerCase();
+        return switch (mode) {
+            case "0", "off", "native", "false" -> "0";
+            case "1", "all", "true" -> "1";
+            case "wheel", "btn", "buttons" -> "wheel";
+            case "select" -> "select";
+            default -> "0";
+        };
+    }
+
+    private static String resolveMouseMode() {
+        return normalizeMouseMode(System.getenv("BRIEF_MOUSE"));
     }
 }

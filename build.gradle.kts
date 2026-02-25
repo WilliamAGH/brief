@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.williamcallahan"
-version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.1.8"
+version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.2.0"
 
 java {
     toolchain {
@@ -77,6 +77,12 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:6.0.2")
     testImplementation("org.mockito:mockito-core:5.21.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.2")
+}
+
+tasks.processResources {
+    filesMatching("version.properties") {
+        expand("version" to project.version)
+    }
 }
 
 tasks.test {
