@@ -54,6 +54,14 @@ class PasteRoutingModelTest {
         assertTrue(after instanceof NoColor);
     }
 
+    @Test
+    void normalizeForSingleLineInputTrimsBoundaryWhitespace() {
+        assertEquals(
+            "coffee shop",
+            PasteRoutingModel.normalizeForSingleLineInput("\n coffee\tshop \r\n")
+        );
+    }
+
     private static final class RecordingModel implements Model {
 
         private Message lastMessage;
