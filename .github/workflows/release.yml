@@ -88,8 +88,8 @@ jobs:
           # Replace sha256 hash value (matches 64 hex chars OR placeholder ${SHA256})
           sed -i -E "s#sha256 \"([a-f0-9]{64}|\\\$\{SHA256})\"#sha256 \"${SHA256}\"#g" Formula/brief.rb
           # Verify the update succeeded (match full URL pattern to catch partial sed failures)
-          grep -q "download/v${VERSION}/brief-${VERSION}.zip" Formula/brief.rb || { echo "::error::Formula URL update failed — expected download/v${VERSION}/brief-${VERSION}.zip"; exit 1; }
-          grep -q "${SHA256}" Formula/brief.rb || { echo "::error::Formula SHA256 update failed"; exit 1; }
+          grep -Fq "download/v${VERSION}/brief-${VERSION}.zip" Formula/brief.rb || { echo "::error::Formula URL update failed — expected download/v${VERSION}/brief-${VERSION}.zip"; exit 1; }
+          grep -Fq "${SHA256}" Formula/brief.rb || { echo "::error::Formula SHA256 update failed"; exit 1; }
 
       - name: Commit and push to tap
         env:
