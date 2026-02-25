@@ -64,6 +64,7 @@ final class PasteRoutingModel implements Model, MouseTargetProvider {
                 paste.content()
             );
             delegate = routed.model();
+            applyDelegateStyleOverrides(delegate);
             return UpdateResult.from(this, routed.command());
         }
 
@@ -119,7 +120,7 @@ final class PasteRoutingModel implements Model, MouseTargetProvider {
             normalized.append(ch);
             lastInsertedSpace = (ch == ' ');
         }
-        return normalized.toString();
+        return normalized.toString().trim();
     }
 
     static void applyComposerStyles(Textarea composer) {
