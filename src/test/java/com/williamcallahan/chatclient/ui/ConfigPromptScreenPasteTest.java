@@ -19,6 +19,15 @@ class ConfigPromptScreenPasteTest {
         assertEquals("sk-test line-two line-three", prompt.currentValue());
     }
 
+    @Test
+    void pasteTrimsBoundaryWhitespaceFromControlCharacters() {
+        PromptScreenUnderTest prompt = new PromptScreenUnderTest();
+
+        prompt.update(new PasteMessage("\n\t sk-test \r\n"));
+
+        assertEquals("sk-test", prompt.currentValue());
+    }
+
     private static final class PromptScreenUnderTest extends ConfigPromptScreen {
 
         private PromptScreenUnderTest() {
