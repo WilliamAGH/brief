@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.williamcallahan"
-version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.1.6"
+version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.1.7"
 
 java {
     toolchain {
@@ -25,7 +25,7 @@ val tui4jLocalRequested =
 val tui4jRemoteRequested =
     tui4jSourceOverride == "maven" || tui4jSourceOverride == "remote"
 val isCi = (System.getenv("CI") == "true") || (System.getenv("GITHUB_ACTIONS") == "true")
-val tui4jSnapshotVersion = "0.3.1"
+val tui4jSnapshotVersion = "0.3.2-preview"
 val tui4jJlineVersion = "3.26.1"
 val tui4jIcuVersion = "76.1"
 val tui4jCommonsTextVersion = "1.13.0"
