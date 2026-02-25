@@ -68,7 +68,7 @@ public class ApiKeyPromptScreen extends ConfigPromptScreen {
         }
 
         Conversation convo = convoBuilder.build();
-        ChatConversationScreen next = new ChatConversationScreen(
+        ChatConversationScreen chatScreen = new ChatConversationScreen(
             name,
             convo,
             config,
@@ -76,6 +76,7 @@ public class ApiKeyPromptScreen extends ConfigPromptScreen {
             height,
             needsModelSelection
         );
+        Model next = new PasteRoutingModel(chatScreen);
         return UpdateResult.from(
             next,
             batch(

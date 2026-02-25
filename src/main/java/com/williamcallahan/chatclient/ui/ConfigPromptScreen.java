@@ -5,12 +5,14 @@ import com.williamcallahan.chatclient.Config;
 import com.williamcallahan.tui4j.compat.bubbletea.Command;
 import com.williamcallahan.tui4j.compat.bubbletea.Message;
 import com.williamcallahan.tui4j.compat.bubbletea.Model;
+import com.williamcallahan.tui4j.compat.bubbletea.PasteMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.UpdateResult;
 import com.williamcallahan.tui4j.compat.lipgloss.Position;
 import com.williamcallahan.tui4j.compat.lipgloss.border.StandardBorder;
 import com.williamcallahan.tui4j.compat.lipgloss.Style;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyAliases.KeyAlias;
+import com.williamcallahan.tui4j.compat.bubbletea.input.key.Key;
 import com.williamcallahan.tui4j.compat.bubbletea.KeyPressMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.input.key.KeyType;
 import com.williamcallahan.tui4j.compat.bubbletea.QuitMessage;
@@ -68,6 +70,10 @@ public abstract class ConfigPromptScreen implements Model {
             return UpdateResult.from(this);
         }
 
+        if (msg instanceof PasteMessage paste) {
+            return handlePaste(paste.content());
+        }
+
         if (msg instanceof KeyPressMessage key) {
             if (KeyAliases.getKeyType(KeyAlias.KeyEnter) == key.type()) {
                 return onSubmit(textInput.value());
@@ -80,6 +86,40 @@ public abstract class ConfigPromptScreen implements Model {
 
         UpdateResult<? extends Model> r = textInput.update(msg);
         return UpdateResult.from(this, r.command());
+    }
+
+    private UpdateResult<? extends Model> handlePaste(String content) {
+        if (content == null || content.isEmpty()) {
+            return UpdateResult.from(this);
+        }
+
+        String normalized = normalizeSingleLinePaste(content);
+        if (normalized.isEmpty()) {
+            return UpdateResult.from(this);
+        }
+
+        KeyPressMessage pasteAsRunes = new KeyPressMessage(
+            new Key(KeyType.KeyRunes, normalized.toCharArray())
+        );
+        UpdateResult<? extends Model> inputUpdate = textInput.update(pasteAsRunes);
+        return UpdateResult.from(this, inputUpdate.command());
+    }
+
+    private static String normalizeSingleLinePaste(String content) {
+        StringBuilder normalized = new StringBuilder(content.length());
+        boolean lastInsertedSpace = false;
+        for (char ch : content.toCharArray()) {
+            if (ch == '\r' || ch == '\n' || ch == '\t' || ch < 32) {
+                if (!lastInsertedSpace) {
+                    normalized.append(' ');
+                    lastInsertedSpace = true;
+                }
+                continue;
+            }
+            normalized.append(ch);
+            lastInsertedSpace = (ch == ' ');
+        }
+        return normalized.toString();
     }
 
     @Override
@@ -128,4 +168,3 @@ public abstract class ConfigPromptScreen implements Model {
         return s.indent(spaces).stripTrailing();
     }
 }
-
