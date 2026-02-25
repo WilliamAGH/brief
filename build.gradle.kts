@@ -79,6 +79,12 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.2")
 }
 
+tasks.processResources {
+    filesMatching("version.properties") {
+        expand("version" to project.version)
+    }
+}
+
 tasks.test {
     useJUnitPlatform()
 }
