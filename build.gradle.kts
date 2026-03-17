@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.williamcallahan"
-version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.2.0"
+version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.2.1"
 
 java {
     toolchain {
@@ -79,11 +79,19 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.2")
 }
 
-tasks.processResources {
-    filesMatching("version.properties") {
-        expand("version" to project.version)
+val generateVersionProps by tasks.registering {
+    val versionValue = version.toString()
+    val outputFile = layout.buildDirectory.file("generated-resources/version.properties")
+    inputs.property("version", versionValue)
+    outputs.file(outputFile)
+    doLast {
+        outputFile.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText("app.version=$versionValue\n")
+        }
     }
 }
+sourceSets.main { resources.srcDir(generateVersionProps.map { layout.buildDirectory.dir("generated-resources") }) }
 
 tasks.test {
     useJUnitPlatform()
