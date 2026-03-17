@@ -26,7 +26,13 @@ jobs:
         id: version
         env:
           REF_NAME: ${{ github.ref_name }}
-        run: echo "VERSION=${REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION="${REF_NAME#v}"
+          if ! echo "$VERSION" | grep -qE '^[0-9]+(\.[0-9]+)+$'; then
+            echo "::error::Invalid version format '${VERSION}' — expected numeric semver (e.g. 0.1.7)"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build distribution
         env:
@@ -44,6 +50,10 @@ jobs:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           SHA=$(shasum -a 256 "build/distributions/brief-${VERSION}.zip" | cut -d' ' -f1)
+          if [ -z "$SHA" ] || ! echo "$SHA" | grep -qE '^[a-f0-9]{64}$'; then
+            echo "::error::Failed to calculate valid SHA256 for brief-${VERSION}.zip"
+            exit 1
+          fi
           echo "SHA256=$SHA" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
@@ -60,7 +70,7 @@ jobs:
           git push origin latest --force
 
       - name: Checkout homebrew-tap
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: WilliamAGH/homebrew-tap
           token: ${{ secrets.TAP_GITHUB_TOKEN }}
@@ -72,11 +82,14 @@ jobs:
           SHA256: ${{ steps.sha.outputs.SHA256 }}
         run: |
           cd homebrew-tap
-          # Replace version in URL (matches semver like 0.1.1 OR placeholder ${VERSION})
-          sed -i -E "s#brief-([0-9]+\.[0-9]+\.[0-9]+|\\\$\{VERSION\})\.zip#brief-${VERSION}.zip#g" Formula/brief.rb
-          sed -i -E "s#/v([0-9]+\.[0-9]+\.[0-9]+|\\\$\{VERSION\})/#/v${VERSION}/#g" Formula/brief.rb
+          # Replace version in URL (matches any multi-component version like 0.1.5, 0.1.5.1, etc.)
+          sed -i -E "s#brief-([0-9]+(\.[0-9]+)+|\\\$\{VERSION\})\.zip#brief-${VERSION}.zip#g" Formula/brief.rb
+          sed -i -E "s#/v([0-9]+(\.[0-9]+)+|\\\$\{VERSION\})/#/v${VERSION}/#g" Formula/brief.rb
           # Replace sha256 hash value (matches 64 hex chars OR placeholder ${SHA256})
           sed -i -E "s#sha256 \"([a-f0-9]{64}|\\\$\{SHA256})\"#sha256 \"${SHA256}\"#g" Formula/brief.rb
+          # Verify the update succeeded (match full URL pattern to catch partial sed failures)
+          grep -Fq "download/v${VERSION}/brief-${VERSION}.zip" Formula/brief.rb || { echo "::error::Formula URL update failed — expected download/v${VERSION}/brief-${VERSION}.zip"; exit 1; }
+          grep -Fq "${SHA256}" Formula/brief.rb || { echo "::error::Formula SHA256 update failed"; exit 1; }
 
       - name: Commit and push to tap
         env:

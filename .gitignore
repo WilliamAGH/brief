@@ -13,6 +13,7 @@ dist/
 # Gradle
 .gradle
 .gradle-user-home/
+.gradle-local/
 !gradle/wrapper/gradle-wrapper.jar
 
 # Kotlin
