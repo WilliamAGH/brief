@@ -136,6 +136,7 @@ public final class ChatConversationScreen
 
     private boolean waiting = false;
     private final HistoryViewport historyViewport = new HistoryViewport();
+    private final InputHistory inputHistory = new InputHistory();
     private final MouseSelectionController mouseSelection =
         new MouseSelectionController();
     private List<MouseTarget> mouseTargets = List.of();
@@ -387,11 +388,36 @@ public final class ChatConversationScreen
             UpdateResult<? extends Model> r = handleSlashPaletteKey(key, msg);
             if (r != null) return r;
         }
+        UpdateResult<? extends Model> histResult = handleInputHistory(key);
+        if (histResult != null) return histResult;
+
         UpdateResult<? extends Model> navResult = handleNavigationKey(key);
         if (navResult != null) return navResult;
 
         if (KeyAliases.getKeyType(KeyAlias.KeyEnter) == key.type()) {
             return handleEnterKey();
+        }
+        return null;
+    }
+
+    private UpdateResult<? extends Model> handleInputHistory(KeyPressMessage key) {
+        if (key.type() == KeyType.KeyUp && composer.line() == 0) {
+            String entry = inputHistory.previous(composer.value());
+            if (entry != null) {
+                composer.reset();
+                composer.insertString(entry);
+                return UpdateResult.from(this);
+            }
+        }
+        if (key.type() == KeyType.KeyDown
+                && inputHistory.isBrowsing()
+                && composer.line() >= composer.lineCount() - 1) {
+            String entry = inputHistory.next();
+            if (entry != null) {
+                composer.reset();
+                composer.insertString(entry);
+                return UpdateResult.from(this);
+            }
         }
         return null;
     }
@@ -536,6 +562,7 @@ public final class ChatConversationScreen
         }
         lastEnterText = text;
         lastEnterAtMs = now;
+        inputHistory.push(text);
         return submitUserText(text);
     }
 
