@@ -8,18 +8,15 @@ import com.williamcallahan.tui4j.term.Clipboard;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-/**
- * Manages mouse-based text selection and interaction within the chat history.
- * Tracks selection coordinates and maps them to visible history lines for highlighting and copying.
- */
+/** Manages mouse-based text selection and interaction within the chat history. */
 final class MouseSelectionController {
 
     enum ScrollHint { NONE, UP, DOWN }
 
     record HandleResult(Command command, ScrollHint scrollHint) {
-        static final HandleResult EMPTY = new HandleResult(null, ScrollHint.NONE);
-
         static HandleResult of(Command cmd) {
             return new HandleResult(cmd, ScrollHint.NONE);
         }
@@ -29,8 +26,10 @@ final class MouseSelectionController {
         }
     }
 
+    private static final Logger LOG = Logger.getLogger(MouseSelectionController.class.getName());
     private static final String STATUS_OPENED = "OPENED";
     private static final String STATUS_COPIED = "COPIED";
+    private static final String STATUS_FAILED = "COPY FAILED";
     private static final long STATUS_TIMEOUT_MS = 1200L;
 
     private boolean selecting = false;
@@ -298,10 +297,8 @@ final class MouseSelectionController {
         String result = text.toString().trim();
         if (result.isEmpty()) return;
 
-        if (Clipboard.tryCopy(result)) {
-            lastActionAtMs = System.currentTimeMillis();
-            lastStatus = STATUS_COPIED;
-        }
+        lastActionAtMs = System.currentTimeMillis();
+        lastStatus = Clipboard.tryCopy(result) ? STATUS_COPIED : STATUS_FAILED;
     }
 
     private static String tokenAt(String line, int col) {
@@ -320,18 +317,20 @@ final class MouseSelectionController {
     private static boolean openUrl(String url) {
         try {
             String os = System.getProperty("os.name", "").toLowerCase();
-            if (os.contains("mac")) {
-                new ProcessBuilder("open", url).start();
-                return true;
-            } else if (os.contains("nix") || os.contains("nux") || os.contains("linux")) {
-                new ProcessBuilder("xdg-open", url).start();
-                return true;
-            } else if (os.contains("win")) {
-                new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
-                return true;
-            }
-        } catch (Exception ignored) {}
-        return false;
+            ProcessBuilder pb;
+            if (os.contains("mac")) pb = new ProcessBuilder("open", url);
+            else if (os.contains("nix") || os.contains("nux") || os.contains("linux")) pb = new ProcessBuilder("xdg-open", url);
+            else if (os.contains("win")) pb = new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url);
+            else return false;
+            Process p = pb.start();
+            p.getInputStream().close();
+            p.getErrorStream().close();
+            p.getOutputStream().close();
+            return true;
+        } catch (Exception e) {
+            LOG.log(Level.FINE, "Failed to open URL: " + url, e);
+            return false;
+        }
     }
 
     private void clampSelectionToHistory() {
