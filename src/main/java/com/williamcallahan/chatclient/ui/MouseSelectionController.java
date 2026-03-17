@@ -4,6 +4,7 @@ import com.williamcallahan.tui4j.compat.bubbletea.Command;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseAction;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseButton;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseMessage;
+import com.williamcallahan.tui4j.term.Clipboard;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +14,21 @@ import java.util.List;
  * Tracks selection coordinates and maps them to visible history lines for highlighting and copying.
  */
 final class MouseSelectionController {
+
+    enum ScrollHint { NONE, UP, DOWN }
+
+    record HandleResult(Command command, ScrollHint scrollHint) {
+        static final HandleResult EMPTY = new HandleResult(null, ScrollHint.NONE);
+
+        static HandleResult of(Command cmd) {
+            return new HandleResult(cmd, ScrollHint.NONE);
+        }
+
+        static HandleResult of(Command cmd, ScrollHint hint) {
+            return new HandleResult(cmd, hint);
+        }
+    }
+
     private static final String STATUS_OPENED = "OPENED";
     private static final String STATUS_COPIED = "COPIED";
     private static final long STATUS_TIMEOUT_MS = 1200L;
@@ -83,8 +99,9 @@ final class MouseSelectionController {
 
     /**
      * Handles mouse messages for selection, link opening, and copying.
+     * Returns a result containing the command and a scroll hint for edge-drag auto-scrolling.
      */
-    Command handle(MouseMessage mouse) {
+    HandleResult handle(MouseMessage mouse) {
         if (mouse == null || mouse.isWheel()) return null;
 
         int visibleRowIndex = visibleLineIndex(mouse.row());
@@ -97,7 +114,7 @@ final class MouseSelectionController {
 
         // Handle selection state transitions
         if (mouse.getAction() == MouseAction.MouseActionPress && mouse.getButton() == MouseButton.MouseButtonLeft) {
-            return handleMousePress(visibleRowIndex, col, commands);
+            return HandleResult.of(handleMousePress(visibleRowIndex, col, commands));
         }
 
         if (mouse.getAction() == MouseAction.MouseActionMotion && selecting) {
@@ -105,10 +122,10 @@ final class MouseSelectionController {
         }
 
         if (mouse.getAction() == MouseAction.MouseActionRelease && selecting) {
-            return handleMouseRelease(mouse, col, commands);
+            return HandleResult.of(handleMouseRelease(mouse, col, commands));
         }
 
-        return commands.isEmpty() ? null : Command.batch(commands);
+        return commands.isEmpty() ? null : HandleResult.of(Command.batch(commands));
     }
 
     private void updateCursorShape(MouseMessage mouse, int visibleRowIndex, int col, List<Command> commands) {
@@ -152,15 +169,23 @@ final class MouseSelectionController {
         return Command.batch(commands);
     }
 
-    private Command handleMouseDrag(MouseMessage mouse, int col, List<Command> commands) {
+    private HandleResult handleMouseDrag(MouseMessage mouse, int col, List<Command> commands) {
         selectionMoved = true;
-        // Clamp motion to history area if it leaves
         int targetLineIndex = clampLineIndexForRow(mouse.row());
         if (targetLineIndex != -1) {
             selectionEndLineIndex = targetLineIndex;
         }
         selectionEndCol = col;
-        return Command.batch(commands);
+
+        // Detect edge drag: mouse above or below visible history triggers auto-scroll
+        ScrollHint hint = ScrollHint.NONE;
+        if (mouse.row() < historyStartRow) {
+            hint = ScrollHint.UP;
+        } else if (!visibleHistoryPlain.isEmpty()
+                && mouse.row() > historyStartRow + visibleHistoryPlain.size() - 1) {
+            hint = ScrollHint.DOWN;
+        }
+        return HandleResult.of(Command.batch(commands), hint);
     }
 
     private Command handleMouseRelease(MouseMessage mouse, int col, List<Command> commands) {
@@ -174,14 +199,12 @@ final class MouseSelectionController {
         if (!selectionMoved) {
             boolean opened = openLinkUnderMouse(mouse.row(), mouse.column());
             if (!opened) {
-                Command copyCmd = copySelectedHistoryLines();
-                if (copyCmd != null) commands.add(copyCmd);
+                copySelectedHistoryLines();
             } else {
                 clearSelection();
             }
         } else {
-            Command copyCmd = copySelectedHistoryLines();
-            if (copyCmd != null) commands.add(copyCmd);
+            copySelectedHistoryLines();
         }
         return Command.batch(commands);
     }
@@ -238,8 +261,8 @@ final class MouseSelectionController {
         return false;
     }
 
-    private Command copySelectedHistoryLines() {
-        if (!hasSelection() || allHistoryPlain.isEmpty()) return null;
+    private void copySelectedHistoryLines() {
+        if (!hasSelection() || allHistoryPlain.isEmpty()) return;
 
         int r1 = selectionStartLineIndex;
         int c1 = selectionStartCol;
@@ -273,11 +296,12 @@ final class MouseSelectionController {
         }
 
         String result = text.toString().trim();
-        if (result.isEmpty()) return null;
+        if (result.isEmpty()) return;
 
-        lastActionAtMs = System.currentTimeMillis();
-        lastStatus = STATUS_COPIED;
-        return Command.copyToClipboard(result);
+        if (Clipboard.tryCopy(result)) {
+            lastActionAtMs = System.currentTimeMillis();
+            lastStatus = STATUS_COPIED;
+        }
     }
 
     private static String tokenAt(String line, int col) {

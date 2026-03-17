@@ -193,6 +193,7 @@ public final class ChatConversationScreen
 
         // Configure Textarea for multi-line input
         composer.setPrompt("› ");
+        composer.focus();
         composer
             .style()
             .prompt(TuiTheme.inputPrompt())
@@ -204,7 +205,6 @@ public final class ChatConversationScreen
         composer.setEndOfBufferCharacter(' ');
         composer.setMaxHeight(MAX_COMPOSER_LINES);
         composer.setWidth(Math.max(20, this.width - 8));
-        composer.focus();
     }
 
     @Override
@@ -268,8 +268,15 @@ public final class ChatConversationScreen
         }
 
         if (mouseSelectionEnabled && msg instanceof MouseMessage mouse) {
-            Command cmd = mouseSelection.handle(mouse);
-            if (cmd != null) return UpdateResult.from(this, cmd);
+            MouseSelectionController.HandleResult result = mouseSelection.handle(mouse);
+            if (result != null) {
+                if (result.scrollHint() == MouseSelectionController.ScrollHint.UP) {
+                    historyViewport.scrollUp(3);
+                } else if (result.scrollHint() == MouseSelectionController.ScrollHint.DOWN) {
+                    historyViewport.scrollDown(3);
+                }
+                if (result.command() != null) return UpdateResult.from(this, result.command());
+            }
             if (mouseSelection.isSelecting()) return UpdateResult.from(this);
         }
 
