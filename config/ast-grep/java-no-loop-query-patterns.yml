@@ -1,0 +1,53 @@
+# [BLK16] Prevent N+1 query patterns: data-access calls inside loops.
+# Batch methods (findXxxBatch, loadByIds, IN-clause queries) must replace per-item calls.
+
+id: java-usecase-no-loop-port-queries
+language: java
+severity: error
+message: >-
+  [BLK16] Port method call inside loop creates N+1 query pattern.
+  Use batch methods (e.g., findXxxBatch, loadByIds) instead of per-item port calls.
+
+rule:
+  pattern: $RECV.$METHOD($$$)
+  regex: "\\w+Port\\.(?:find|load|fetch|count|compute)"
+  inside:
+    any:
+      - kind: enhanced_for_statement
+      - kind: for_statement
+      - kind: while_statement
+    stopBy: end
+
+files:
+  - "src/main/java/**/application/**/*.java"
+
+ignores:
+  - "**/generated/**"
+
+---
+# [BLK16] Prevent N+1 in persistence layer: DSLContext queries inside loops.
+
+id: java-persistence-no-loop-dsl-queries
+language: java
+severity: error
+message: >-
+  [BLK16] DSLContext query inside loop creates N+1 query pattern.
+  Use batch queries with IN clauses or jOOQ multiset instead of per-item queries.
+
+rule:
+  pattern: $RECV.$METHOD($$$)
+  regex: "\\bdsl\\.(?:select|insert|update|delete|fetch)"
+  inside:
+    any:
+      - kind: enhanced_for_statement
+      - kind: for_statement
+      - kind: while_statement
+    stopBy: end
+
+files:
+  - "src/main/java/**/persistence/**/*.java"
+
+ignores:
+  - "**/generated/**"
+  # Query-building loop: composes jOOQ conditions per classification bucket (fixed set, not N+1)
+  # Chunked batch: partitions large ID lists into 200-element IN-clause batches (bounded, not N+1)

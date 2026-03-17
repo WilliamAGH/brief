@@ -1,0 +1,26 @@
+# Catch unqualified PostgreSQL extension functions in embedded SQL strings
+# [MG1a] Extension functions must be schema-qualified in stored procedures/triggers
+# Context: calls fail when the extension schema isn't in search_path (common in Testcontainers).
+id: java-sql-unqualified-extension-functions
+language: java
+severity: error
+message: >-
+  SQL string contains an unqualified extension function call.
+  Qualify extension functions with their schema (extensions.<fn>() or public.<fn>()).
+note: >-
+  This prevents latent failures when search_path omits the extension schema.
+  Applies to unaccent/pg_trgm helpers and similar extension-provided functions.
+rule:
+  kind: string_literal
+  regex: "(?i)(^|[^a-z_.])(unaccent|similarity|word_similarity|strict_word_similarity|show_limit|set_limit|show_trgm)\\s*\\("
+  all:
+    # Exclude test assertions that check for specific output strings
+    - not:
+        inside:
+          kind: method_invocation
+          has:
+            kind: identifier
+            regex: "^(contains|isEqualTo|startsWith|endsWith|matches)$"
+files:
+  - "**/src/main/java/**/*.java"
+  - "**/src/test/java/**/*.java"

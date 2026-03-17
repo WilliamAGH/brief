@@ -1,0 +1,30 @@
+# [AL1a] No alias exports / [IM1b] No barrel re-exports
+# Catches re-export patterns that create indirection or barrel files.
+#
+# Forbidden:
+#   export { Foo } from "./other"
+#   export * from "./other"
+#   export { Foo as Bar } from "./other"
+#   export type { Foo } from "./other"
+
+id: no-reexports
+language: tsx
+severity: error
+message: |
+  [AL1a/IM1b] No re-exports allowed. Import directly from source files.
+  Barrel files and re-export indirection are prohibited.
+
+rule:
+  any:
+    # Named re-exports (single quotes - repo standard)
+    - pattern: "export { $$$NAMES } from '$_'"
+    # Named re-exports (double quotes - for completeness)
+    - pattern: export { $$$NAMES } from "$_"
+    # Namespace re-exports (single quotes)
+    - pattern: "export * from '$_'"
+    # Namespace re-exports (double quotes)
+    - pattern: export * from "$_"
+    # Type re-exports (single quotes)
+    - pattern: "export type { $$$NAMES } from '$_'"
+    # Type re-exports (double quotes)
+    - pattern: export type { $$$NAMES } from "$_"

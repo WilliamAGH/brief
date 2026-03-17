@@ -1,0 +1,19 @@
+# [NAM1] Ban *Impl suffix on classes
+# Implementation noise - use semantic suffixes instead.
+
+id: java-ban-impl-suffix
+language: java
+severity: error
+message: "[NAM1] *Impl suffix banned. Fix: FooImpl → FooAdapter, DefaultFoo"
+
+rule:
+  kind: class_declaration
+  has:
+    kind: identifier
+    regex: Impl$
+
+files:
+  - "src/main/java/**/*.java"
+
+ignores:
+  - "**/generated/**"

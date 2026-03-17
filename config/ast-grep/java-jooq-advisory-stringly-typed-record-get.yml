@@ -1,0 +1,17 @@
+# Advisory: flag stringly-typed jOOQ Record.get() column access.
+# [JQ1a] Prefer typed Field<T> constants or Records.mapping() for compile-time safety.
+# String-based column names break silently at runtime if a column is renamed.
+id: java-jooq-advisory-stringly-typed-record-get
+language: java
+severity: warning
+message: >-
+  Advisory [JQ1a]: record.get("string", Type.class) uses a stringly-typed column reference.
+  If the column is renamed, this breaks silently at runtime.
+  Prefer typed Field<T> constants (e.g., NEWS.PUBLICATION) or Records.mapping().
+rule:
+  pattern: $RECORD.get($COLUMN, $TYPE)
+constraints:
+  COLUMN:
+    kind: string_literal
+files:
+  - "src/main/java/**/persistence/**/*.java"

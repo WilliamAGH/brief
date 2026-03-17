@@ -1,0 +1,18 @@
+# [CV1h/LNT1c] No Record<string, ...> casts on domain values
+id: no-domain-record-cast
+language: tsx
+severity: warning
+message: |
+  [CV1h/LNT1c] Casting values to Record<string, ...> bypasses the canonical typed contract.
+
+  Import and use the real domain type or parse the unknown value once at the trust boundary.
+
+ignores:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/__tests__/**"
+  - "**/__mocks__/**"
+
+rule:
+  pattern: $EXPR as Record<string, $VALUE>

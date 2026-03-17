@@ -1,0 +1,26 @@
+# [TY1] @RequestBody must have @Valid for input validation
+# External JSON payloads must be validated before entering domain logic.
+# Spring Boot validates request bodies only when @Valid is present.
+#
+# Safe: @Valid @RequestBody EntityRequest body
+# Unsafe: @RequestBody EntityRequest body (no validation)
+#
+# @see docs/api-contracts/universal-type-name-contracts.md
+
+id: java-requestbody-requires-valid
+language: java
+severity: warning
+message: "[TY1] @RequestBody without @Valid. Fix: add @Valid annotation for input validation | Docs: docs/api-contracts/jackson-deserialization.md"
+
+rule:
+  pattern: '@RequestBody $TYPE $VAR'
+  not:
+    inside:
+      pattern: '@Valid @RequestBody $TYPE $VAR'
+
+files:
+  - "src/main/java/**/adapters/in/web/**/*.java"
+  - "src/main/java/**/controller/**/*.java"
+
+ignores:
+  - "**/generated/**"

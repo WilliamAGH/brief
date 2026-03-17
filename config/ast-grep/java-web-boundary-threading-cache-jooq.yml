@@ -1,0 +1,106 @@
+# Web/controller boundary guardrails for threading, caching, and jOOQ access.
+# Enforces [AR1b], [CA1b], [TX1c], [JQ1a].
+
+id: java-web-no-manual-parallelism
+language: java
+severity: error
+message: >-
+  [AR1b/TX1c] Web layer must not orchestrate threads/parallelism.
+  Delegate concurrency to use cases/adapters with bounded executors and semaphores.
+
+rule:
+  any:
+    - pattern: Executors.$METHOD($$$)
+    - pattern: CompletableFuture.supplyAsync($$$)
+    - pattern: CompletableFuture.runAsync($$$)
+    - pattern: new StructuredTaskScope($$$)
+    - pattern: new StructuredTaskScope.ShutdownOnFailure($$$)
+    - pattern: new StructuredTaskScope.ShutdownOnSuccess($$$)
+    - pattern: new Semaphore($$$)
+    - pattern: Thread.startVirtualThread($$$)
+    - pattern: Thread.ofVirtual()
+    - pattern: new Thread($$$)
+
+files:
+  - "src/main/java/**/web/**/*.java"
+
+ignores:
+  - "**/generated/**"
+
+---
+id: java-web-no-async-annotation
+language: java
+severity: error
+message: >-
+  [AR1b/TX1c] Web layer must not use @Async.
+  Async orchestration belongs in use cases/adapters with explicit budget controls.
+
+rule:
+  kind: annotation
+  has:
+    kind: identifier
+    regex: "^Async$"
+
+files:
+  - "src/main/java/**/web/**/*.java"
+
+ignores:
+  - "**/generated/**"
+
+---
+id: java-web-no-cache-annotations
+language: java
+severity: error
+message: >-
+  [CA1b] Web layer must not use cache annotations.
+  Caching belongs in application/usecase services.
+
+rule:
+  kind: annotation
+  has:
+    kind: identifier
+    regex: "^(Cacheable|CacheEvict|CachePut|Caching)$"
+
+files:
+  - "src/main/java/**/web/**/*.java"
+
+ignores:
+  - "**/generated/**"
+
+---
+id: java-web-no-jooq-dsl-usage
+language: java
+severity: error
+message: >-
+  [AR1b/JQ1a] Web layer must not use jOOQ types.
+  Controllers/advice may handle exceptions but must not compose SQL/DSL queries.
+
+rule:
+  any:
+    - pattern: import org.jooq.$TYPE;
+    - pattern: import org.jooq.$PACKAGE.$TYPE;
+    - pattern: org.jooq.$TYPE
+    - pattern: org.jooq.$PACKAGE.$TYPE
+
+files:
+  - "src/main/java/**/web/**/*.java"
+
+ignores:
+  - "**/generated/**"
+
+---
+id: java-virtual-thread-executor-allowlist
+language: java
+severity: error
+message: >-
+  [TX1c/DRY] Virtual-thread executor creation must stay in approved fan-out executors.
+  Add/extend dedicated executor components rather than creating ad-hoc executors.
+
+rule:
+  pattern: Executors.newVirtualThreadPerTaskExecutor()
+
+files:
+  - "src/main/java/**/*.java"
+
+ignores:
+  - "**/generated/**"

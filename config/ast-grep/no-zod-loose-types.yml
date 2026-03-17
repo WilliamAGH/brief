@@ -1,0 +1,19 @@
+id: no-zod-loose-types
+language: tsx
+severity: error
+message: |
+  [CV1a/TY1d] Loose Zod schema constructors are prohibited.
+
+  z.json(), z.looseObject(), and .passthrough() accept untyped data,
+  bypassing type safety. Use strict, typed Zod schemas instead
+  or define strict z.object() schemas with explicit field types.
+
+  - z.json() → use the canonical schema for the field's actual type
+  - z.looseObject() → use z.object() (Zod v4 strips extra keys by default)
+  - .passthrough() → use z.object() (deprecated alias for .loose())
+
+rule:
+  any:
+    - pattern: z.json($$$ARGS)
+    - pattern: z.looseObject($$$ARGS)
+    - pattern: $OBJ.passthrough()

@@ -1,0 +1,28 @@
+# [TY1l] Schema files are declaration-only
+# src/schemas/ must contain ONLY Zod schema definitions and z.infer type exports.
+# No functions, no transformation logic, no runtime behavior.
+#
+# Allowed: export const FooSchema = z.object({...}), export type Foo = z.infer<typeof FooSchema>
+# Forbidden: export function, export const fn = () =>, createCaseMapper() invocations
+
+id: no-logic-in-schemas
+language: tsx
+severity: error
+message: |
+  [TY1l] Schema files must be declaration-only. No functions or runtime logic in src/schemas/.
+  Move helpers to src/services/**/ or src/lib/**/. Schemas = types/validation only.
+
+rule:
+  any:
+    # Exported function declarations
+    - pattern: export function $NAME($$$PARAMS) { $$$BODY }
+    # Exported arrow functions
+    - pattern: "export const $NAME = ($$$PARAMS) => $$$BODY"
+    # Exported function expressions
+    - pattern: "export const $NAME = function($$$PARAMS) { $$$BODY }"
+    # Async variants
+    - pattern: export async function $NAME($$$PARAMS) { $$$BODY }
+    - pattern: "export const $NAME = async ($$$PARAMS) => $$$BODY"
+
+files:
+  - "src/schemas/**/*.ts"

@@ -1,0 +1,22 @@
+# [IM1a] No Barrel Files
+# index.ts re-exports are forbidden. Import directly from source files.
+# See AGENTS.md [IM1a]
+
+id: no-barrel-files
+language: tsx
+severity: error
+message: |
+  [IM1a] Barrel file detected. Do not use index.ts for re-exports.
+  Import directly from the source file instead.
+  See AGENTS.md [IM1a]: "index.ts re-exports are forbidden"
+
+rule:
+  kind: export_statement
+  has:
+    kind: string
+    # Has a source string (from 'xxx'), indicating re-export
+    nthChild: 1
+
+files:
+  - "**/index.ts"
+  - "**/index.tsx"

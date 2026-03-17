@@ -1,0 +1,15 @@
+# Block runtime per-row FTS vector computation in Java SQL strings.
+# [FT1a] FTS must use indexed search_vector columns.
+id: java-sql-no-runtime-to-tsvector
+language: java
+severity: error
+message: >-
+  Runtime SQL must not call to_tsvector(...).
+  Use indexed search_vector columns and FtsExpressions/PostgresDSL helpers.
+rule:
+  kind: string_literal
+  regex: "(?i)to_tsvector\\s*\\("
+files:
+  - "src/main/java/**/*.java"
+ignores:
+  - "**/generated/**"

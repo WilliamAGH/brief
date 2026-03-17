@@ -1,0 +1,44 @@
+# [TY1c] Schema directories must use z.infer<> for type exports
+#
+# Schema files are declaration-only. Types must be derived via z.infer<typeof Schema>,
+# not hand-declared as interface or type alias.
+#
+# Allowed in schema dirs:
+#   export type Person = z.infer<typeof PersonSchema>;
+#   export type PersonInput = z.input<typeof PersonSchema>;
+#
+# Forbidden in schema dirs:
+#   export interface Person { ... }
+#   export type Person = { ... }
+#
+# @see AGENTS.md [TY1b-c]
+# @see docs/domains/typescript-type-conventions.md
+id: schema-types-only-infer
+language: tsx
+severity: error
+message: |
+  [TY1c] Hand-declared type in schema directory.
+  Schema files must export types via z.infer<typeof Schema> only.
+  Move this interface/type to the consuming file or convert to a Zod schema.
+
+# Only applies to schema directories
+files:
+  - "types/schemas/**"
+  - "src/schemas/**"
+
+rule:
+  any:
+    # interface Foo { ... } - always forbidden in schema dirs
+    - kind: interface_declaration
+    # type Foo = { object literal } - forbidden
+    - kind: type_alias_declaration
+      has:
+        kind: object_type
+    # type Foo = string | number - forbidden (union of primitives, not z.infer unions)
+    - kind: type_alias_declaration
+      has:
+        kind: union_type
+      not:
+        # Allow: type Foo = z.infer<...> | z.infer<...>
+        has:
+          kind: type_query

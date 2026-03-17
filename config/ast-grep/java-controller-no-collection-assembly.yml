@@ -1,0 +1,30 @@
+# [AR1b] Controllers must not build collections in loops.
+# Loop + list/set/map accumulation is a sign of business logic or data transformation
+# that belongs in a use case, domain service, or support class.
+# Controllers should delegate and return — not iterate and assemble.
+
+id: java-controller-no-loop-list-accumulation
+language: java
+severity: warning
+message: >-
+  [AR1b] Controller contains loop with collection accumulation.
+  Move iteration/assembly logic to a use case, domain service, or support class.
+  Controllers should delegate to one use case and return the result.
+
+rule:
+  any:
+    - pattern: $LIST.add($$$)
+    - pattern: $SET.add($$$)
+    - pattern: $MAP.put($$$)
+  inside:
+    any:
+      - kind: enhanced_for_statement
+      - kind: for_statement
+      - kind: while_statement
+    stopBy: end
+
+files:
+  - "src/main/java/**/controller/*.java"
+
+ignores:
+  - "**/generated/**"

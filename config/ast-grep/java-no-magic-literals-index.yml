@@ -1,0 +1,27 @@
+# [CS1g] No magic literals as array/list indices
+# Use named constants (except 0/1).
+#
+# Forbidden:
+#   list.get(3)
+#   arr[5]
+#
+# Required:
+#   private static final int THIRD_ELEMENT = 2;
+#   list.get(THIRD_ELEMENT)
+
+id: java-no-magic-literals-index
+message: "[CS1g] Magic literal as array/list index. Use a named constant (except 0/1)."
+severity: warning
+language: Java
+rule:
+  kind: method_invocation
+  pattern: $_.get($NUM)
+  has:
+    kind: decimal_integer_literal
+    not:
+      regex: ^(0|1)$
+files:
+  - "src/main/java/**/*.java"
+  - "!src/main/java/**/generated/**"
+  - "!target/**"
+  - "!src/test/**"

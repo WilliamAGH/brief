@@ -1,0 +1,92 @@
+# [CC1m] No magic literals
+# Magic numbers/strings obscure intent. Use named constants (except 0/1/-1).
+#
+# Forbidden:
+#   if (count > 5) { ... }
+#   arr[3]
+#   timeout: 3000
+#   status === 200
+#
+# Required:
+#   const MAX_RETRIES = 5;
+#   if (count > MAX_RETRIES) { ... }
+#   const FIRST_ITEM = 0;
+#   arr[FIRST_ITEM]
+
+id: no-magic-literals
+language: tsx
+severity: warning
+message: "[CC1m] Magic literal. Fix: if (x > 5) → const MAX = 5; if (x > MAX) | Docs: back-end/docs/api-contracts/universal-type-name-contracts.md#constants"
+
+rule:
+  any:
+    # Numeric comparisons with magic numbers (not 0, 1, -1)
+    - pattern: $_ > $NUM
+      has:
+        field: right
+        kind: number
+        not:
+          regex: ^(0|1|-1)$
+    - pattern: $_ < $NUM
+      has:
+        field: right
+        kind: number
+        not:
+          regex: ^(0|1|-1)$
+    - pattern: $_ >= $NUM
+      has:
+        field: right
+        kind: number
+        not:
+          regex: ^(0|1|-1)$
+    - pattern: $_ <= $NUM
+      has:
+        field: right
+        kind: number
+        not:
+          regex: ^(0|1|-1)$
+    - pattern: $_ === $NUM
+      has:
+        field: right
+        kind: number
+        not:
+          regex: ^(0|1|-1)$
+    - pattern: $_ !== $NUM
+      has:
+        field: right
+        kind: number
+        not:
+          regex: ^(0|1|-1)$
+    - pattern: $_ == $NUM
+      has:
+        field: right
+        kind: number
+        not:
+          regex: ^(0|1|-1)$
+    - pattern: $_ != $NUM
+      has:
+        field: right
+        kind: number
+        not:
+          regex: ^(0|1|-1)$
+    # Array subscript with magic index (not 0, 1)
+    - pattern: $_[$NUM]
+      has:
+        field: index
+        kind: number
+        not:
+          regex: ^(0|1)$
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+
+ignores:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/*.spec.tsx"
+  - "**/test/**"
+  - "**/__tests__/**"
+  - "**/schemas/**"
+  - "src/schemas/**"

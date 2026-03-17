@@ -1,0 +1,62 @@
+# [BC1] Broken Contract Union Types in Schemas
+#
+# Union types combining primitives with objects (e.g., `string | { url: string }`)
+# in schema definitions indicate the API returns inconsistent types.
+# This is a broken contract - request a backend fix instead of accommodating it.
+#
+# Bad: z.union([z.string(), z.object({ url: z.string() })])
+# Good: z.object({ url: z.string() }) // Consistent shape from API
+#
+# @see docs/contracts/clean-code-project-structure.md#inbound-vs-domain-objects
+id: warn-broken-contract-union
+language: tsx
+severity: warning
+message: |
+  [BC1] Possible broken contract: union of primitive and object types.
+
+  Union types like `string | { url: ... }` indicate the API returns inconsistent types.
+  DO NOT accommodate this with union schemas. Instead:
+  1. STOP - Do not create adapters/helpers to normalize
+  2. REQUEST FIX - Generate an LLM prompt for the backend team
+  3. DOCUMENT - File an issue referencing this pattern
+
+  See docs/contracts/clean-code-project-structure.md#backend-fix-request-template
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+
+# Exclude internal utility schemas where flexibility is intentional
+ignores:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/__tests__/**"
+
+# Detect z.union combining z.string() with z.object() or schema references
+#
+# Note: This rule catches common patterns. Some edge cases may require code review.
+rule:
+  any:
+    # Pattern: z.union([z.string(), z.object(...)])
+    - pattern: z.union([$$$BEFORE, z.string(), $$$MIDDLE, z.object($$$OBJ), $$$AFTER])
+    - pattern: z.union([$$$BEFORE, z.object($$$OBJ), $$$MIDDLE, z.string(), $$$AFTER])
+    # Pattern: z.string().or(z.object(...))
+    - pattern: z.string().or(z.object($$$OBJ))
+    # Pattern: z.object(...).or(z.string())
+    - pattern: z.object($$$OBJ).or(z.string())
+    # Pattern: z.union([z.string(), FooSchema]) - with Schema suffix reference
+    # Match specifically when second element is an identifier ending in Schema
+    - all:
+        - pattern: z.union([z.string(), $SCHEMA])
+        - has:
+            kind: identifier
+            regex: "^[A-Z][a-zA-Z]*Schema$"
+            stopBy: end
+    # Pattern: z.union([FooSchema, z.string()]) - schema reference before string
+    - all:
+        - pattern: z.union([$SCHEMA, z.string()])
+        - has:
+            kind: identifier
+            regex: "^[A-Z][a-zA-Z]*Schema$"
+            stopBy: end

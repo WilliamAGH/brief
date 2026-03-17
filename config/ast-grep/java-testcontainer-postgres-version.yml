@@ -1,0 +1,16 @@
+# Forbid old postgres versions - only postgres:17 allowed
+# Ensures version consistency across all integration tests
+id: java-testcontainer-postgres-version
+language: java
+severity: error
+message: >-
+  Only postgres:17 is allowed. Found deprecated version.
+  Update to: public.ecr.aws/docker/library/postgres:17-alpine
+note: >-
+  Postgres version standardization ensures consistent behavior across all tests.
+  postgres:15 and postgres:16 are deprecated.
+rule:
+  kind: string_literal
+  regex: 'postgres:(1[0-6]|[0-9])-'
+files:
+  - "**/src/test/java/**/*.java"

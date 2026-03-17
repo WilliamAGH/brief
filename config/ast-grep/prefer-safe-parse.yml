@@ -1,0 +1,35 @@
+# [ZV1a] Prefer safeParse over parse
+# Never use .parse() on external data - it throws and crashes rendering.
+# See AGENTS.md [ZV1a]
+
+id: prefer-safe-parse
+language: tsx
+severity: warning
+message: |
+  [ZV1a] Zod .parse() detected. Use .safeParse() instead.
+  .parse() throws on invalid data which can crash rendering.
+  Use:
+  - schema.safeParse(data) for discriminated union result
+  See AGENTS.md [ZV1a]: "Never use .parse() on external data"
+
+rule:
+  kind: call_expression
+  all:
+    - has:
+        kind: member_expression
+        has:
+          kind: property_identifier
+          pattern: parse
+    - not:
+        has:
+          kind: member_expression
+          has:
+            kind: identifier
+            pattern: JSON
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+
+# Note: This is a warning because some internal uses may be acceptable
+# when data is guaranteed valid (e.g., after prior validation)

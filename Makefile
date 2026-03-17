@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: run run-local run-local-tui build clean dist local-tui release-test release test
+.PHONY: run run-local run-local-tui build clean dist local-tui release-test release test lint lint-ast
 
 run: build
 	@set -a; [ -f .env ] && . ./.env; set +a; ./build/install/brief/bin/brief
@@ -18,6 +18,11 @@ build:
 
 test:
 	@set -o pipefail; JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew test -q 2>&1 | { grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true; }
+
+lint: lint-ast ## Run all linters
+
+lint-ast: ## Run ast-grep rules for Java naming and type safety
+	@ast-grep scan -c sgconfig.yml src/main/java/
 
 local-tui:
 	@cd ../tui4j && ./gradlew jar

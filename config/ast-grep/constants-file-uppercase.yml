@@ -1,0 +1,20 @@
+# [NAM1] Constants files must use UPPER_SNAKE_CASE
+# Files named *constants* signal module-level constants.
+# @see back-end/docs/api-contracts/universal-type-name-contracts.md#constants
+
+id: constants-file-uppercase
+language: tsx
+severity: warning
+message: "[NAM1] Use UPPER_SNAKE_CASE in constants files. Fix: maxRetries → MAX_RETRIES | Docs: back-end/docs/api-contracts/universal-type-name-contracts.md#constants"
+
+rule:
+  pattern: export const $NAME = $VAL
+  has:
+    kind: identifier
+    regex: ^[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*$
+
+files:
+  - "src/**/constants.ts"
+  - "src/**/constants/*.ts"
+  - "src/**/*Constants.ts"
+  - "src/**/*constants.ts"

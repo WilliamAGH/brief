@@ -1,0 +1,53 @@
+id: no-catch-return-fallback
+language: tsx
+severity: error
+message: |
+  [RC1a] catch blocks must not silently degrade by returning fallback values.
+
+  Returning null/undefined/false/empty values from catch hides root causes.
+  Log with context and rethrow, or return an explicit typed error contract.
+
+ignores:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/__tests__/**"
+  - "**/__mocks__/**"
+
+rule:
+  any:
+    - pattern: |
+        try { $$$TRY }
+        catch ($ERR) {
+          $$$BEFORE
+          return null;
+          $$$AFTER
+        }
+    - pattern: |
+        try { $$$TRY }
+        catch ($ERR) {
+          $$$BEFORE
+          return undefined;
+          $$$AFTER
+        }
+    - pattern: |
+        try { $$$TRY }
+        catch ($ERR) {
+          $$$BEFORE
+          return false;
+          $$$AFTER
+        }
+    - pattern: |
+        try { $$$TRY }
+        catch ($ERR) {
+          $$$BEFORE
+          return [];
+          $$$AFTER
+        }
+    - pattern: |
+        try { $$$TRY }
+        catch ($ERR) {
+          $$$BEFORE
+          return {};
+          $$$AFTER
+        }

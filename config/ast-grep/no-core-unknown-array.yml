@@ -1,0 +1,21 @@
+# [TY1c/CV1h] Core trust-boundary code must not use unknown[] bags
+id: no-core-unknown-array
+language: tsx
+severity: error
+message: |
+  [TY1c/CV1h] unknown[] is prohibited in core boundary code.
+
+  Use explicit item contracts, JsonValue[], or a typed union instead of an untyped array bag.
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+
+ignores:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/__tests__/**"
+
+rule:
+  pattern: unknown[]

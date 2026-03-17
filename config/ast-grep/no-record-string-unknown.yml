@@ -1,0 +1,38 @@
+# [TY1u/LNT1a] Record<string, unknown> is prohibited
+id: no-record-string-unknown
+language: tsx
+severity: error
+message: |
+  [TY1u/LNT1a] Record<string, unknown> is prohibited.
+
+  This repo does not allow catch-all object bags. Bind to the canonical typed contract,
+  or declare the exact object shape you own with explicit fields.
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+
+ignores:
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "**/__tests__/**"
+  - "**/__mocks__/**"
+
+rule:
+  any:
+    - pattern: |
+        type $NAME = Record<string, unknown>
+    - pattern: |
+        export type $NAME = Record<string, unknown>
+    - pattern: |
+        const $NAME: Record<string, unknown> = $VALUE
+    - pattern: |
+        let $NAME: Record<string, unknown> = $VALUE
+    - pattern: |
+        var $NAME: Record<string, unknown> = $VALUE
+    - pattern: |
+        $FIELD: Record<string, unknown>
+    - pattern: |
+        function $NAME($PARAM: Record<string, unknown>) { $$$BODY }
+    - pattern: |
+        ($PARAM: Record<string, unknown>) => $BODY

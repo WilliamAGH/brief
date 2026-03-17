@@ -1,0 +1,31 @@
+# [ND1f] Type names must be PascalCase
+# Type aliases, interfaces, and enums must start with an uppercase letter.
+# See CLAUDE.md [ND1f]: "class and record names declare their domain role"
+
+id: require-pascal-case-types
+language: tsx
+severity: warning
+message: |
+  [ND1f] Type name must be PascalCase (start with uppercase letter).
+
+  Bad:  type streamStatus = ...
+  Good: type StreamStatus = ...
+
+rule:
+  any:
+    - kind: type_alias_declaration
+      has:
+        field: name
+        regex: "^[a-z]"
+    - kind: interface_declaration
+      has:
+        field: name
+        regex: "^[a-z]"
+    - kind: enum_declaration
+      has:
+        field: name
+        regex: "^[a-z]"
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"

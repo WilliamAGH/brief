@@ -1,0 +1,36 @@
+# Catch unqualified PostgreSQL % (trigram similarity) operator in embedded SQL strings
+# [MG1a] Extension operators must be schema-qualified via OPERATOR() syntax
+# Context: pg_trgm % operator requires OPERATOR(extensions.%) when extension is in non-public schema.
+# Root cause of 14 test failures fixed 2026-01-30: search_path missing 'extensions' schema.
+# See: docs/database/testing.md "Extension Schema in search_path" section
+id: java-sql-unqualified-trigram-operator
+language: java
+severity: error
+message: >-
+  SQL string contains unqualified '%' trigram operator.
+  Use OPERATOR(extensions.%) syntax: "{0}::text OPERATOR(extensions.%) {1}::text"
+note: >-
+  The pg_trgm '%' operator lives in 'extensions' schema after migration
+  20231229_00_create_extensions_schema.sql. Without schema qualification,
+  queries fail with: ERROR: operator does not exist: text % character varying.
+  This caused DuplicateQueryBuilder and DuplicateCheckController test failures.
+fix: >-
+  Replace '{0} % {1}' with '{0}::text OPERATOR(extensions.%) {1}::text'
+  in PostgresDSL.trigramMatch() or similar jOOQ DSL helpers.
+rule:
+  kind: string_literal
+  # Match % that looks like trigram operator (preceded/followed by jOOQ placeholders or identifiers)
+  # Exclude modulo operator patterns like "% 2" or "i % n"
+  regex: "\\{\\d+\\}\\s*%\\s*\\{\\d+\\}"
+  all:
+    - not:
+        regex: "OPERATOR\\s*\\(\\s*(extensions|public)\\s*\\.\\s*%\\s*\\)"
+    # Exclude test assertions
+    - not:
+        inside:
+          kind: method_invocation
+          has:
+            kind: identifier
+            regex: "^(contains|isEqualTo|startsWith|endsWith|matches)$"
+files:
+  - "**/src/main/java/**/*.java"

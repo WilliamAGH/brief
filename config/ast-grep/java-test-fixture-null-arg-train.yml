@@ -1,0 +1,21 @@
+# [SS1g/FC11] Shared Java test fixtures must not encode positional null sludge.
+id: java-test-fixture-null-arg-train
+message: >-
+  Shared test fixture helper contains an explicit null-argument train.
+  Use named helpers/builders or explicit negative helpers instead of generic positional-null defaults.
+severity: error
+language: Java
+rule:
+  any:
+    - pattern:
+        context: new $TYPE($$$PRE, null, null, null, $$$POST)
+        strictness: relaxed
+    - pattern:
+        context: $FUNC($$$PRE, null, null, null, $$$POST)
+        strictness: relaxed
+files:
+  - "src/test/java/**/*TestData*.java"
+  - "src/test/java/**/fixtures/**/*.java"
+ignores:
+  - "**/generated/**"
+  - "**/target/**"

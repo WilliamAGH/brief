@@ -1,0 +1,16 @@
+# Forbid Docker Hub postgres images - must use Amazon ECR Public
+# Avoids Docker Hub rate limits and ensures consistent image source
+id: java-testcontainer-no-dockerhub-postgres
+language: java
+severity: error
+message: >-
+  Docker Hub postgres images forbidden. Use Amazon ECR Public mirror:
+  public.ecr.aws/docker/library/postgres:17-alpine
+note: >-
+  Amazon ECR Public avoids Docker Hub rate limits and mirrors official images.
+  Only postgres:17-alpine is approved.
+rule:
+  kind: string_literal
+  regex: '"postgres:\d+'
+files:
+  - "**/src/test/java/**/*.java"

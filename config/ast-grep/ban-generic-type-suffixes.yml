@@ -1,0 +1,29 @@
+# [ND1f] No generic type suffixes
+# Type names must declare their domain role, not use generic suffixes.
+# See CLAUDE.md [ND1f]: "No *Data, *Info, *Object, *Item, *Wrapper, *Holder, *Container"
+
+id: ban-generic-type-suffixes
+language: tsx
+severity: warning
+message: |
+  [ND1f] Type name uses a banned generic suffix.
+  Use a domain-specific name instead.
+
+  Banned suffixes: Data, Info, Object, Item, Wrapper, Holder, Container
+  Bad:  type UserData = ...
+  Good: type User = ... or type UserProfile = ...
+
+rule:
+  any:
+    - kind: type_alias_declaration
+      has:
+        field: name
+        regex: "(Data|Info|Object|Item|Wrapper|Holder|Container)$"
+    - kind: interface_declaration
+      has:
+        field: name
+        regex: "(Data|Info|Object|Item|Wrapper|Holder|Container)$"
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"

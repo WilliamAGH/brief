@@ -1,0 +1,19 @@
+# [DM1f] Ban Data/Info suffixes
+# *Data and *Info are too generic. Use specific domain names instead.
+
+id: java-ban-data-info-suffix
+language: java
+severity: error
+message: "[DM1f] *Data/*Info suffix banned. Fix: PersonData → Person, PersonRef, PersonBrief"
+
+rule:
+  kind: class_declaration
+  has:
+    kind: identifier
+    regex: (Data|Info)$
+
+files:
+  - "src/main/java/**/*.java"
+
+ignores:
+  - "**/generated/**"

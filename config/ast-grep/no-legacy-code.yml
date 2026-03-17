@@ -1,0 +1,38 @@
+# [LGY1] Legacy/Deprecated Code Detection
+#
+# The repository mandates a "Zero Legacy" policy for new code.
+# Existing "Legacy" or "Deprecated" items are permitted as transitionary
+# off-ramps but are targeted for immediate removal or refactoring.
+#
+# @see AGENTS.md [LGY1]
+id: no-legacy-code
+language: tsx
+severity: warning
+message: |
+  [LGY1] Legacy/Deprecated code detected. This is targeted for removal.
+
+  You are using a transitionary term (Legacy, Deprecated, Old).
+  - This provides a temporary off-ramp but must be prioritized for refactoring.
+  - Plan to DELETE or RENAME this code to describe its actual purpose.
+  - Do not add NEW legacy wrappers.
+
+  Targets: *Legacy*, *Deprecated*, *Old*
+
+files:
+  - "src/**"
+
+ignores:
+  - "**/node_modules/**"
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "**/__tests__/**"
+  - "**/migrations/**" # Database migrations are historical by definition
+
+rule:
+  any:
+    # identifiers
+    - kind: identifier
+      regex: (Legacy|Deprecated|Old)
+    # type identifiers
+    - kind: type_identifier
+      regex: (Legacy|Deprecated|Old)

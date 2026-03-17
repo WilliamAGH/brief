@@ -1,0 +1,23 @@
+# [TY1c] ZodTypeAny is prohibited in product code
+id: no-zod-type-any
+language: tsx
+severity: error
+message: |
+  [TY1c] ZodTypeAny is prohibited.
+
+  Use z.ZodType with a concrete output/input contract instead of the Zod "any" escape hatch.
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+
+ignores:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/__tests__/**"
+
+rule:
+  any:
+    - pattern: ZodTypeAny
+    - pattern: z.ZodTypeAny

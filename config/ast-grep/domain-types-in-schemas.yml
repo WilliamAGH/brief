@@ -1,0 +1,51 @@
+# [DM1f] Banned type name suffixes
+#
+# These suffixes are BANNED per AGENTS.md [DM1f], [DM1g], [DM1n]:
+#   *DTO, *Data, *Info, *Payload, *Response, *Request, *Utils, *Helper,
+#   *Common, *Manager, *Impl, *Row, *Record, *ListItem, *Mutation, *Query
+#
+# Use proper domain naming instead:
+#   - Projections: {Domain}Ref, {Domain}Brief, {Domain}, {Domain}Detail
+#   - Inputs: Create{Domain}, Update{Domain}, Patch{Domain}, {Domain}Filter
+#   - Errors: {Domain}NotFound, {Domain}Conflict, {Domain}Invalid
+#
+# Exception: *Entity suffix is allowed ONLY for the literal Entity domain
+# (e.g., v1/entities endpoint types like SearchAggregatedEntity).
+#
+# @see AGENTS.md [DM1f], [DM1g], [DM1n]
+# @see docs/contracts/clean-code-project-structure.md Section 4
+id: domain-types-in-schemas
+language: tsx
+severity: warning
+message: |
+  [DM1f] Banned type name suffix detected.
+
+  These suffixes are prohibited: *DTO, *Data, *Info, *Payload, *Response,
+  *Request, *Utils, *Helper, *Common, *Manager, *Impl, *Row, *Record,
+  *ListItem, *Mutation, *Query.
+
+  Use proper domain naming instead:
+  - Projections: {Domain}Ref, {Domain}Brief, {Domain}, {Domain}Detail
+  - Inputs: Create{Domain}, Update{Domain}, Patch{Domain}, {Domain}Filter
+
+# Apply everywhere except tests
+ignores:
+  - "__tests__/**"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "__mocks__/**"
+  - "tools/one-off/**"
+
+rule:
+  any:
+    # Match interface with banned suffix
+    - kind: interface_declaration
+      has:
+        kind: type_identifier
+        regex: (DTO|Data|Info|Payload|Utils|Helper|Common|Manager|Impl|Row|Record|ListItem|Mutation|Query)$
+    # Match type alias with banned suffix
+    - kind: type_alias_declaration
+      has:
+        kind: type_identifier
+        regex: (DTO|Data|Info|Payload|Utils|Helper|Common|Manager|Impl|Row|Record|ListItem|Mutation|Query)$

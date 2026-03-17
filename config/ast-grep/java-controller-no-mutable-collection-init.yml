@@ -1,0 +1,29 @@
+# [AR1b] Controllers should not instantiate mutable collections.
+# Mutable collection construction (ArrayList, HashMap, LinkedHashSet, etc.)
+# signals data assembly or orchestration logic that belongs in a use case.
+# Controllers should delegate and return immutable results from use cases.
+
+id: java-controller-no-mutable-collection-init
+language: java
+severity: warning
+message: >-
+  [AR1b] Controller instantiates a mutable collection.
+  Data assembly and orchestration belong in a use case or support class.
+  Controllers should delegate to one use case and return the result.
+
+rule:
+  any:
+    - pattern: new ArrayList<$$$>($$$)
+    - pattern: new LinkedList<$$$>($$$)
+    - pattern: new HashMap<$$$>($$$)
+    - pattern: new LinkedHashMap<$$$>($$$)
+    - pattern: new HashSet<$$$>($$$)
+    - pattern: new LinkedHashSet<$$$>($$$)
+    - pattern: new TreeMap<$$$>($$$)
+    - pattern: new TreeSet<$$$>($$$)
+
+files:
+  - "src/main/java/**/controller/*.java"
+
+ignores:
+  - "**/generated/**"

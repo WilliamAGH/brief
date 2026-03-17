@@ -1,0 +1,77 @@
+# Database concurrency/source-of-truth guardrails.
+# Enforces typed property ownership and persistence boundary limits for DB fan-out.
+
+id: java-db-config-no-env-pool-read
+language: java
+severity: error
+message: >-
+  [CC1b/TX1c] Do not read app.database.pool.* via Environment.
+  Use typed AppDatabaseProperties/AppProperties as the single source of truth.
+
+rule:
+  any:
+    - pattern: $ENV.getProperty("app.database.pool.$KEY")
+    - pattern: $ENV.getProperty("app.database.pool.$KEY", $$$)
+    - pattern: $ENV.getRequiredProperty("app.database.pool.$KEY")
+    - pattern: $ENV.containsProperty("app.database.pool.$KEY")
+
+files:
+  - "src/main/java/**/*.java"
+
+ignores:
+  - "**/generated/**"
+
+---
+id: java-db-config-no-env-read-routing
+language: java
+severity: error
+message: >-
+  [CC1b/TX1b] Do not read app.database.read-routing via Environment.
+  Use typed AppDatabaseProperties/AppProperties for routing ownership.
+
+rule:
+  any:
+    - pattern: $ENV.getProperty("app.database.read-routing")
+    - pattern: $ENV.getProperty("app.database.read-routing", $$$)
+    - pattern: $ENV.getRequiredProperty("app.database.read-routing")
+    - pattern: $ENV.containsProperty("app.database.read-routing")
+
+files:
+  - "src/main/java/**/*.java"
+
+ignores:
+  - "**/generated/**"
+
+---
+id: java-persistence-no-virtual-thread-fanout
+language: java
+severity: error
+message: >-
+  [AR1h/TX1c] Persistence adapters must not construct virtual-thread executors directly.
+  Use approved application-level fan-out components.
+
+rule:
+  pattern: Executors.newVirtualThreadPerTaskExecutor()
+
+files:
+  - "src/main/java/**/persistence/**/*.java"
+
+ignores:
+  - "**/generated/**"
+
+---
+id: java-persistence-semaphore-allowlist
+language: java
+severity: error
+message: >-
+  [AR1h/TX1c] Persistence semaphore construction is allowlisted only for the existing enrichment gate.
+  Add new DB fan-out limits in application-level components.
+
+rule:
+  pattern: new Semaphore($$$)
+
+files:
+  - "src/main/java/**/persistence/**/*.java"
+
+ignores:
+  - "**/generated/**"

@@ -1,0 +1,54 @@
+# [EH1a] No Silent Catch - Single-Statement Default Returns
+# Catches that ONLY return defaults (no logging, no comments) are forbidden.
+# Catches that log before returning are compliant with [EH1b].
+# See AGENTS.md [EH1a], [EH1b]
+#
+# Detection: Match catch_clause -> statement_block containing exactly one
+# return_statement with null/undefined/[]/{}. If there's a logging call
+# or comment, the block will have multiple children and won't match.
+#
+# Exception: Functions named with "safe" prefix (e.g., safeParseUrl) are
+# intentional no-throw utilities where the return type makes failure explicit.
+
+id: no-silent-catch
+language: tsx
+severity: error
+message: |
+  [EH1a] Silent catch block - returns default without logging.
+  Per [EH1b], either:
+  1. Add logging: console.error('Context:', error) or logger.error(...)
+  2. Use a "safe*" naming pattern with documented intent
+  3. Add a comment explaining why silent return is appropriate
+
+rule:
+  kind: catch_clause
+  all:
+    - has:
+        kind: statement_block
+        # Match blocks with only one direct child (the return statement)
+        # If there's logging or comments, there will be more children
+        has:
+          kind: return_statement
+          # Ensure this is the only statement
+          nthChild: 1
+          any:
+            - pattern: return null
+            - pattern: return undefined
+            - pattern: return []
+            - pattern: return {}
+        # Ensure no second child exists (no logging after return)
+        not:
+          has:
+            nthChild: 2
+    # Exclude catch blocks inside functions named with "safe" prefix
+    - not:
+        inside:
+          stopBy: end
+          kind: function_declaration
+          has:
+            kind: identifier
+            regex: "^safe"
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"

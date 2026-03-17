@@ -1,0 +1,24 @@
+# [TY1c/CV1h] Core trust-boundary code must not use Record<string, unknown> bags
+id: no-core-record-unknown
+language: tsx
+severity: error
+message: |
+  [TY1c/CV1h] Record<string, unknown> and {[key: string]: unknown} bags are prohibited in core boundary code.
+
+  Use canonical contracts, explicit owned object types, or JsonValue-based shapes instead of loose
+  dictionary bags.
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+
+ignores:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/__tests__/**"
+
+rule:
+  any:
+    - pattern: Record<string, unknown>
+    - pattern: "{ [key: string]: unknown }"

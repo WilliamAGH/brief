@@ -1,0 +1,34 @@
+# [ND1b] Generic variable names are prohibited
+id: no-generic-variable-names
+language: tsx
+severity: error
+message: |
+  [ND1b] Generic variable name `data` is prohibited.
+
+  Rename this binding to an intent-revealing domain name. Raw payload variables
+  must not be named `data`.
+
+files:
+  - "src/**"
+
+ignores:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/*.spec.tsx"
+  - "**/__tests__/**"
+  - "**/__mocks__/**"
+
+rule:
+  any:
+    - kind: variable_declarator
+      has:
+        field: name
+        kind: identifier
+        regex: "^data$"
+    - pattern: |
+        function $NAME(data, $$$REST) {
+          $$$BODY
+        }
+    - pattern: |
+        (data, $$$REST) => $$$BODY

@@ -1,0 +1,15 @@
+# Advisory: flag string literals that appear to be table-qualified column references.
+# [JQ1c] Raw SQL column references (e.g., "n.categories", "e.status_sitemap_show")
+# are invisible to the compiler and break silently if a column or alias is renamed.
+id: java-jooq-advisory-raw-sql-qualified-column
+language: java
+severity: warning
+message: >-
+  Advisory [JQ1c]: String literal appears to contain a table-qualified column reference.
+  If the column or table alias is renamed, this breaks silently at runtime.
+  Consider using typed Field<T> constants or jOOQ DSL field references.
+rule:
+  kind: string_literal
+  regex: '^"[a-z]\d?\.[a-z_]+'
+files:
+  - "src/main/java/**/persistence/**/*.java"

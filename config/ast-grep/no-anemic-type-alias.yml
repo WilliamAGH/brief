@@ -1,0 +1,36 @@
+# [AB1a] No Anemic Type Aliases
+# Do not add type aliases that only rename without adding behavior.
+# If types need different semantics, define a new schema.
+# If they're the same, use the original type directly.
+# See AGENTS.md [AB1a]
+
+id: no-anemic-type-alias
+language: tsx
+severity: warning
+message: |
+  [AB1a] Anemic type alias detected: `export type X = Y;`
+  Type aliases that only rename without transformation add no value.
+
+  Options:
+  - Use the original type directly (preferred)
+  - If different semantics needed, define a new Zod schema
+  - If it's a narrowing/picking, use `Pick<T, K>` or `Omit<T, K>`
+
+  Bad:  export type CachedSearchResponse = SearchResponse;
+  Good: import { SearchResponse } from "./search"; // use directly
+
+rule:
+  kind: export_statement
+  has:
+    kind: type_alias_declaration
+    all:
+      - has:
+          kind: type_identifier
+          field: name
+      - has:
+          kind: type_identifier
+          field: value
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"

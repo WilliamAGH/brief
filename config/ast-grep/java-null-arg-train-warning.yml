@@ -1,0 +1,24 @@
+# [CC1a/CS1f/FN1] Warn on explicit null-argument trains in calls/constructors
+# Detects 3+ consecutive null arguments (including multiline/commented forms).
+# Warning only: intended for gradual cleanup, not CI blocking.
+
+id: java-null-arg-train-warning
+message: >-
+  Explicit null-argument train detected (3+ consecutive null args).
+  Prefer typed factories/builders/empty() helpers over long null callsites.
+severity: warning
+language: Java
+rule:
+  any:
+    - pattern:
+        context: new $TYPE($$$PRE, null, null, null, $$$POST)
+        strictness: relaxed
+    - pattern:
+        context: $FUNC($$$PRE, null, null, null, $$$POST)
+        strictness: relaxed
+files:
+  - "src/main/java/**/*.java"
+  - "src/test/java/**/*.java"
+ignores:
+  - "**/generated/**"
+  - "**/target/**"

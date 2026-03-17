@@ -1,0 +1,19 @@
+# [NAM1] Ban I-prefix on interfaces
+# Hungarian notation is an anti-pattern.
+
+id: java-ban-i-prefix-interface
+language: java
+severity: error
+message: "[NAM1] I-prefix banned. Fix: IUser → User"
+
+rule:
+  kind: interface_declaration
+  has:
+    kind: identifier
+    regex: ^I[A-Z][a-zA-Z0-9]*$
+
+files:
+  - "src/main/java/**/*.java"
+
+ignores:
+  - "**/generated/**"

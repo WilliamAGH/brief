@@ -1,0 +1,19 @@
+# [TST2] Test mock files must live under __tests__/__mocks__
+# Prevents ad-hoc mock modules living directly under __tests__.
+
+id: no-test-mock-files-outside-mocks
+language: tsx
+severity: error
+message: "[TST2] Mock files belong in __tests__/__mocks__"
+
+rule:
+  kind: program
+
+files:
+  - "__tests__/**/*mock*.ts"
+  - "__tests__/**/*mock*.tsx"
+  - "__tests__/**/*mock*.js"
+  - "__tests__/**/*mock*.jsx"
+
+ignores:
+  - "__tests__/__mocks__/**"

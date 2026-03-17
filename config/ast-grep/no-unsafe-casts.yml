@@ -1,0 +1,29 @@
+# [RC1b] No Unsafe Casts
+# No `as unknown as T` casts or unsafe external data casts.
+# External data (JSON.parse, .json()) must use Zod validation, not type casts.
+# See AGENTS.md [RC1b], [ZA1e]
+
+id: no-unsafe-casts
+language: tsx
+severity: error
+message: "[RC1b] Unsafe cast. Fix: use Zod schema.safeParse() for external data, fix types upstream for internal code | Docs: AGENTS.md#RC1b"
+
+rule:
+  any:
+    # Double cast 'as unknown as'
+    - pattern: $EXPR as unknown as $TYPE
+    # JSON.parse with type assertion - use Zod instead
+    - pattern: "JSON.parse($DATA) as $TYPE"
+    # Response.json() with type assertion - use Zod instead
+    - pattern: "$_.json() as $TYPE"
+    # await response.json() as Type
+    - pattern: "await $_.json() as $TYPE"
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+
+ignores:
+  - "**/__tests__/**"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"

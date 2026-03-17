@@ -1,0 +1,48 @@
+# [TY2] Types should not be named '*Schema'
+#
+# A Type describes the shape of data (e.g. 'User').
+# A Schema is the runtime validator (e.g. 'UserSchema').
+#
+# Do not name your Types '*Schema'.
+#
+# Incorrect:
+#   type UserSchema = z.infer<typeof UserSchema>;
+#
+# Correct:
+#   type User = z.infer<typeof UserSchema>;
+#
+# @see docs/contracts/clean-code-project-structure.md
+id: types-are-not-schemas
+language: tsx
+severity: error
+message: |
+  [TY2] Invalid Type Name.
+
+  Do not append 'Schema' to type or interface names.
+  - 'Schema' implies a runtime Zod object.
+  - Types should represent the Entity itself.
+
+  Incorrect: type UserSchema = ...
+  Correct:   type User = ...
+
+files:
+  - "src/**"
+
+# Exclude test files where we might mock schemas types loosely
+ignores:
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "**/__tests__/**"
+
+rule:
+  any:
+    # Match type aliases ending in Schema
+    - kind: type_alias_declaration
+      has:
+        kind: type_identifier
+        regex: .+Schema$
+    # Match interfaces ending in Schema
+    - kind: interface_declaration
+      has:
+        kind: type_identifier
+        regex: .+Schema$

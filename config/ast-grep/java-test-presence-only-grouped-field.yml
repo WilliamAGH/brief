@@ -1,0 +1,37 @@
+id: java-test-presence-only-grouped-field
+language: java
+severity: warning
+message: |
+  Presence-only assertion on grouped contract sub-field masks type/value regressions.
+  Replace .has("field").isTrue() with a value or type assertion:
+    - .path("field").isBoolean()    (status flags)
+    - .path("field").asText()       (string fields like logoSquare, sourceId)
+    - .path("field").isObject()     (nested objects like text.short)
+    - .path("field").asBoolean()    (boolean fields like isMonogram)
+  Note: .has("field").isFalse() (negative tests) are intentional and not flagged.
+
+rule:
+  any:
+    # status sub-fields
+    - pattern: assertThat($NODE.path("status").has("isHidden")).isTrue()
+    - pattern: assertThat($NODE.path("status").has("showOnSitemap")).isTrue()
+    - pattern: assertThat($NODE.path("status").has("isVerified")).isTrue()
+    - pattern: assertThat($NODE.path("status").has("isFeatured")).isTrue()
+    # images sub-fields
+    - pattern: assertThat($NODE.path("images").has("logoSquare")).isTrue()
+    - pattern: assertThat($NODE.path("images").has("logo")).isTrue()
+    - pattern: assertThat($NODE.path("images").has("isMonogram")).isTrue()
+    - pattern: assertThat($NODE.path("images").has("picture")).isTrue()
+    # text sub-fields
+    - pattern: assertThat($NODE.path("text").has("short")).isTrue()
+    - pattern: assertThat($NODE.path("text").has("expanded")).isTrue()
+    # source sub-fields
+    - pattern: assertThat($NODE.path("source").has("sourceId")).isTrue()
+    - pattern: assertThat($NODE.path("source").has("pendingApprovals")).isTrue()
+    - pattern: assertThat($NODE.path("source").has("status")).isTrue()
+
+files:
+  - "src/test/**/*.java"
+
+ignores:
+  - "**/generated/**"

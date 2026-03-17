@@ -1,0 +1,31 @@
+# [TY1a] No Explicit any
+# Explicit `any` type is forbidden.
+# See AGENTS.md [TY1a], [ZA1e]
+
+id: no-explicit-any
+language: tsx
+severity: error
+message: |
+  [TY1a] Explicit 'any' type detected. Use a specific type instead.
+  Options:
+  - Define a proper interface/type
+  - Use 'unknown' at boundaries and validate with Zod
+  - Use generic constraints
+
+rule:
+  any:
+    # Matches: as any
+    - pattern: $EXPR as any
+    # Matches: Array<any>
+    - pattern: "Array<any>"
+    # Matches: Promise<any>
+    - pattern: "Promise<any>"
+    # Matches: Record<$K, any>
+    - pattern: "Record<$K, any>"
+    # Matches type annotation `: any` via AST kind
+    - kind: predefined_type
+      regex: "^any$"
+
+files:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"

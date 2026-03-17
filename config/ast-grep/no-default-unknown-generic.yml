@@ -1,0 +1,24 @@
+# [TY1c] Default generic parameters must not fall back to unknown
+id: no-default-unknown-generic
+language: tsx
+severity: error
+message: |
+  [TY1c] Generic defaults of unknown are prohibited.
+
+  Return a concrete owned type, JsonValue, or require the caller to provide the generic explicitly.
+
+files:
+  - "src/**"
+
+ignores:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/__tests__/**"
+
+rule:
+  any:
+    - pattern: type $NAME<$T = unknown> = $VALUE
+    - pattern: interface $NAME<$T = unknown> { $$$BODY }
+    - pattern: function $NAME<$T = unknown>($$$ARGS) { $$$BODY }
+    - pattern: async function $NAME<$T = unknown>($$$ARGS) { $$$BODY }

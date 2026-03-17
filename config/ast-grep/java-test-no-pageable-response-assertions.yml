@@ -1,0 +1,16 @@
+id: java-test-no-pageable-response-assertions
+language: java
+severity: error
+message: "[PG1n] Page response contract forbids nested pageable object assertions"
+
+rule:
+  any:
+    - pattern: jsonPath("$.pageable", $MATCHER)
+    - pattern: assertTrue($JSON.has("pageable"), $MESSAGE)
+    - pattern: assertThat($JSON.has("pageable")).isTrue()
+
+files:
+  - "src/test/**/*.java"
+
+ignores:
+  - "**/generated/**"

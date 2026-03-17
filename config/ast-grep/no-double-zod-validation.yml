@@ -1,0 +1,51 @@
+# [CV1b] Validate once at ingress; do not parse/safeParse the same payload twice
+id: no-double-zod-validation
+language: tsx
+severity: error
+message: |
+  [CV1b] Double Zod validation of the same payload in one block is prohibited.
+
+  Parse/safeParse exactly once at the trust boundary, then pass typed values downstream.
+  Re-validating the same payload in downstream code hides root-cause contract issues.
+
+ignores:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/__tests__/**"
+  - "**/__mocks__/**"
+
+rule:
+  any:
+    - pattern: |
+        {
+          $$$BEFORE
+          $S1.parse($PAYLOAD);
+          $$$MIDDLE
+          $S2.parse($PAYLOAD);
+          $$$AFTER
+        }
+    - pattern: |
+        {
+          $$$BEFORE
+          $S1.safeParse($PAYLOAD);
+          $$$MIDDLE
+          $S2.safeParse($PAYLOAD);
+          $$$AFTER
+        }
+    - pattern: |
+        {
+          $$$BEFORE
+          const $R1 = $S1.parse($PAYLOAD);
+          $$$MIDDLE
+          const $R2 = $S2.parse($PAYLOAD);
+          $$$AFTER
+        }
+    - pattern: |
+        {
+          $$$BEFORE
+          const $R1 = $S1.safeParse($PAYLOAD);
+          $$$MIDDLE
+          const $R2 = $S2.safeParse($PAYLOAD);
+          $$$AFTER
+        }
