@@ -4,7 +4,7 @@ message: >-
   Shared test fixture helper contains an explicit null-argument train.
   Use named helpers/builders or explicit negative helpers instead of generic positional-null defaults.
 severity: error
-language: Java
+language: java
 rule:
   any:
     - pattern:

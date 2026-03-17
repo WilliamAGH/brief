@@ -12,7 +12,7 @@
 id: java-no-magic-literals-index
 message: "[CS1g] Magic literal as array/list index. Use a named constant (except 0/1)."
 severity: warning
-language: Java
+language: java
 rule:
   kind: method_invocation
   pattern: $_.get($NUM)

@@ -12,7 +12,7 @@
 id: java-no-magic-literals-comparison
 message: "[CS1g] Magic literal in comparison. Use a named constant (except 0/1/-1)."
 severity: warning
-language: Java
+language: java
 rule:
   kind: binary_expression
   any:

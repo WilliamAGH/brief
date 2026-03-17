@@ -7,7 +7,7 @@ message: >-
   Explicit null-argument train detected (3+ consecutive null args).
   Prefer typed factories/builders/empty() helpers over long null callsites.
 severity: warning
-language: Java
+language: java
 rule:
   any:
     - pattern:
