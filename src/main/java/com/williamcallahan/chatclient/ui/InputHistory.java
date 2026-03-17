@@ -35,7 +35,7 @@ final class InputHistory {
     String previous(String currentText) {
         if (entries.isEmpty()) return null;
         if (cursor == -1) {
-            draft = currentText;
+            draft = currentText != null ? currentText : "";
             cursor = entries.size() - 1;
         } else if (cursor > 0) {
             cursor--;
