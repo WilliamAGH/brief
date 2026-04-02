@@ -10,6 +10,9 @@ on:
       - main
       - dev
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -37,17 +40,17 @@ jobs:
       - name: Build application
         run: ./gradlew build shadowJar --no-daemon
 
-      - name: Extract branch name
+      - name: Publish snapshot JAR
         if: github.event_name == 'push'
-        id: branch
         env:
-          REF: ${{ github.ref_name }}
-        run: echo "NAME=$REF" >> "$GITHUB_OUTPUT"
-
-      - name: Upload fat JAR
-        if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
-        with:
-          name: brief-${{ steps.branch.outputs.NAME }}
-          path: build/libs/*-all.jar
-          retention-days: 30
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          TAG="snapshot-${BRANCH}"
+          cp build/libs/*-all.jar build/libs/brief.jar
+          gh release create "$TAG" \
+            --title "Snapshot (${BRANCH})" \
+            --prerelease \
+            --notes "Latest build from \`${BRANCH}\`. Updated automatically on every push." \
+            2>/dev/null || true
+          gh release upload "$TAG" build/libs/brief.jar --clobber

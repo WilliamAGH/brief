@@ -36,7 +36,7 @@ To run the JAR directly:
 java -jar brief.jar
 ```
 
-Dev builds of the fat JAR are available as CI artifacts: [main](https://github.com/WilliamAGH/brief/actions/workflows/build.yml?query=branch%3Amain) · [dev](https://github.com/WilliamAGH/brief/actions/workflows/build.yml?query=branch%3Adev)
+Dev builds: [main](https://github.com/WilliamAGH/brief/releases/tag/snapshot-main) · [dev](https://github.com/WilliamAGH/brief/releases/tag/snapshot-dev) (updated on every push)
 
 ## Development
 
