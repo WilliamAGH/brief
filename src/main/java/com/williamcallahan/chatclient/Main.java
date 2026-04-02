@@ -1,5 +1,6 @@
 package com.williamcallahan.chatclient;
 
+import com.williamcallahan.chatclient.diagnostics.RuntimeTrace;
 import com.williamcallahan.chatclient.ui.ApiKeyPromptScreen;
 import com.williamcallahan.chatclient.ui.WelcomeScreen;
 import com.williamcallahan.tui4j.compat.bubbletea.Model;

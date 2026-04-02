@@ -1,35 +1,19 @@
 package com.williamcallahan.chatclient.ui;
 
+import com.williamcallahan.chatclient.diagnostics.RuntimeTrace;
 import com.williamcallahan.tui4j.compat.bubbletea.Command;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseAction;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseButton;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseMessage;
 import com.williamcallahan.tui4j.term.Clipboard;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /** Manages mouse-based text selection and interaction within the chat history. */
 final class MouseSelectionController {
 
-    enum ScrollHint { NONE, UP, DOWN }
-
-    record HandleResult(Command command, ScrollHint scrollHint) {
-        static HandleResult of(Command cmd) {
-            return new HandleResult(cmd, ScrollHint.NONE);
-        }
-
-        static HandleResult of(Command cmd, ScrollHint hint) {
-            return new HandleResult(cmd, hint);
-        }
-    }
-
-    private static final Logger LOG = Logger.getLogger(MouseSelectionController.class.getName());
     private static final String STATUS_OPENED = "OPENED";
     private static final String STATUS_COPIED = "COPIED";
-    private static final String STATUS_FAILED = "COPY FAILED";
     private static final long STATUS_TIMEOUT_MS = 1200L;
 
     private boolean selecting = false;
@@ -98,9 +82,8 @@ final class MouseSelectionController {
 
     /**
      * Handles mouse messages for selection, link opening, and copying.
-     * Returns a result containing the command and a scroll hint for edge-drag auto-scrolling.
      */
-    HandleResult handle(MouseMessage mouse) {
+    Command handle(MouseMessage mouse) {
         if (mouse == null || mouse.isWheel()) return null;
 
         int visibleRowIndex = visibleLineIndex(mouse.row());
@@ -113,7 +96,7 @@ final class MouseSelectionController {
 
         // Handle selection state transitions
         if (mouse.getAction() == MouseAction.MouseActionPress && mouse.getButton() == MouseButton.MouseButtonLeft) {
-            return HandleResult.of(handleMousePress(visibleRowIndex, col, commands));
+            return handleMousePress(visibleRowIndex, col, commands);
         }
 
         if (mouse.getAction() == MouseAction.MouseActionMotion && selecting) {
@@ -121,10 +104,10 @@ final class MouseSelectionController {
         }
 
         if (mouse.getAction() == MouseAction.MouseActionRelease && selecting) {
-            return HandleResult.of(handleMouseRelease(mouse, col, commands));
+            return handleMouseRelease(mouse, col, commands);
         }
 
-        return commands.isEmpty() ? null : HandleResult.of(Command.batch(commands));
+        return commands.isEmpty() ? null : Command.batch(commands);
     }
 
     private void updateCursorShape(MouseMessage mouse, int visibleRowIndex, int col, List<Command> commands) {
@@ -168,23 +151,18 @@ final class MouseSelectionController {
         return Command.batch(commands);
     }
 
-    private HandleResult handleMouseDrag(MouseMessage mouse, int col, List<Command> commands) {
+    private Command handleMouseDrag(
+        MouseMessage mouse,
+        int col,
+        List<Command> commands
+    ) {
         selectionMoved = true;
         int targetLineIndex = clampLineIndexForRow(mouse.row());
         if (targetLineIndex != -1) {
             selectionEndLineIndex = targetLineIndex;
         }
         selectionEndCol = col;
-
-        // Detect edge drag: mouse above or below visible history triggers auto-scroll
-        ScrollHint hint = ScrollHint.NONE;
-        if (mouse.row() < historyStartRow) {
-            hint = ScrollHint.UP;
-        } else if (!visibleHistoryPlain.isEmpty()
-                && mouse.row() > historyStartRow + visibleHistoryPlain.size() - 1) {
-            hint = ScrollHint.DOWN;
-        }
-        return HandleResult.of(Command.batch(commands), hint);
+        return Command.batch(commands);
     }
 
     private Command handleMouseRelease(MouseMessage mouse, int col, List<Command> commands) {
@@ -195,17 +173,22 @@ final class MouseSelectionController {
         }
         selectionEndCol = col;
 
-        if (!selectionMoved) {
-            boolean opened = openLinkUnderMouse(mouse.row(), mouse.column());
-            if (!opened) {
-                copySelectedHistoryLines();
-            } else {
-                clearSelection();
-            }
-        } else {
-            copySelectedHistoryLines();
+        Command actionCommand = selectionMoved
+            ? copySelectedHistoryLines()
+            : clickAction(mouse.row(), mouse.column());
+        if (actionCommand != null) {
+            commands.add(actionCommand);
         }
         return Command.batch(commands);
+    }
+
+    private Command clickAction(int mouseRow, int mouseCol) {
+        Command openUrl = openLinkUnderMouse(mouseRow, mouseCol);
+        if (openUrl != null) {
+            clearSelection();
+            return openUrl;
+        }
+        return copySelectedHistoryLines();
     }
 
     private int visibleLineIndex(int mouseRow) {
@@ -237,31 +220,28 @@ final class MouseSelectionController {
         return Math.min(historyWindowStartIndex + (mouseRow - historyStartRow), maxLineIndex);
     }
 
-    private boolean openLinkUnderMouse(int mouseRow, int mouseCol) {
+    private Command openLinkUnderMouse(int mouseRow, int mouseCol) {
         int visibleRowIndex = visibleLineIndex(mouseRow);
-        if (visibleRowIndex < 0) return false;
+        if (visibleRowIndex < 0) return null;
 
         int col = mouseCol - historyStartCol;
         if (col < 0) col = 0;
 
         String line = visibleHistoryPlain.get(visibleRowIndex);
-        if (line == null || line.isBlank()) return false;
+        if (line == null || line.isBlank()) return null;
         if (col >= line.length()) col = line.length() - 1;
 
         String token = tokenAt(line, col);
         String url = UrlUtil.normalizeUrl(token);
-        if (url == null) return false;
+        if (url == null) return null;
 
-        if (openUrl(url)) {
-            lastActionAtMs = System.currentTimeMillis();
-            lastStatus = STATUS_OPENED;
-            return true;
-        }
-        return false;
+        lastActionAtMs = System.currentTimeMillis();
+        lastStatus = STATUS_OPENED;
+        return Command.openUrl(url);
     }
 
-    private void copySelectedHistoryLines() {
-        if (!hasSelection() || allHistoryPlain.isEmpty()) return;
+    private Command copySelectedHistoryLines() {
+        if (!hasSelection() || allHistoryPlain.isEmpty()) return null;
 
         int r1 = selectionStartLineIndex;
         int c1 = selectionStartCol;
@@ -295,10 +275,21 @@ final class MouseSelectionController {
         }
 
         String result = text.toString().trim();
-        if (result.isEmpty()) return;
+        if (result.isEmpty()) return null;
 
-        lastActionAtMs = System.currentTimeMillis();
-        lastStatus = Clipboard.tryCopy(result) ? STATUS_COPIED : STATUS_FAILED;
+        boolean copiedLocally = Clipboard.tryCopy(result);
+        RuntimeTrace.log(
+            "copy",
+            "length=" + result.length() + " local=" + copiedLocally
+        );
+        if (copiedLocally) {
+            lastActionAtMs = System.currentTimeMillis();
+            lastStatus = STATUS_COPIED;
+            return null;
+        }
+        lastActionAtMs = 0L;
+        lastStatus = null;
+        return Command.copyToClipboard(result);
     }
 
     private static String tokenAt(String line, int col) {
@@ -312,25 +303,6 @@ final class MouseSelectionController {
         while (right < n && !Character.isWhitespace(line.charAt(right))) right++;
 
         return line.substring(left, right).trim();
-    }
-
-    private static boolean openUrl(String url) {
-        try {
-            String os = System.getProperty("os.name", "").toLowerCase();
-            ProcessBuilder pb;
-            if (os.contains("mac")) pb = new ProcessBuilder("open", url);
-            else if (os.contains("nix") || os.contains("nux") || os.contains("linux")) pb = new ProcessBuilder("xdg-open", url);
-            else if (os.contains("win")) pb = new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url);
-            else return false;
-            Process p = pb.start();
-            p.getInputStream().close();
-            p.getErrorStream().close();
-            p.getOutputStream().close();
-            return true;
-        } catch (Exception e) {
-            LOG.log(Level.FINE, "Failed to open URL: " + url, e);
-            return false;
-        }
     }
 
     private void clampSelectionToHistory() {

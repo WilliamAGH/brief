@@ -6,7 +6,7 @@ import static com.williamcallahan.tui4j.compat.bubbletea.Command.setWindowTitle;
 import com.williamcallahan.applemaps.AppleMaps;
 import com.williamcallahan.chatclient.Config;
 import com.williamcallahan.chatclient.MouseMode;
-import com.williamcallahan.chatclient.RuntimeTrace;
+import com.williamcallahan.chatclient.diagnostics.RuntimeTrace;
 import com.williamcallahan.chatclient.domain.ChatMessage;
 import com.williamcallahan.chatclient.domain.Conversation;
 import com.williamcallahan.chatclient.domain.Role;
