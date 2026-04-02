@@ -15,6 +15,9 @@ import java.util.function.Supplier;
 /** Config settings palette overlay. */
 final class ConfigPalette {
 
+    private static final int MASKED_EDGE_CHARS = 4;
+    private static final int FULL_MASK_LENGTH = MASKED_EDGE_CHARS * 2;
+
     record ConfigItem(
         String name,
         String envVar,
@@ -178,8 +181,12 @@ final class ConfigPalette {
 
     private static String maskSensitive(String value) {
         if (value == null || value.isBlank()) return "(not set)";
-        if (value.length() <= 8) return "****";
-        return value.substring(0, 4) + "****" + value.substring(value.length() - 4);
+        if (value.length() <= FULL_MASK_LENGTH) return "****";
+        return (
+            value.substring(0, MASKED_EDGE_CHARS) +
+            "****" +
+            value.substring(value.length() - MASKED_EDGE_CHARS)
+        );
     }
 
     private static String nullToNotSet(String value) {
@@ -287,7 +294,7 @@ final class ConfigPalette {
         // Typing characters
         if (key.type() == KeyType.KeyRunes) {
             char[] runes = key.runes();
-            if (runes != null && runes.length > 0 && runes[0] >= 32) {
+            if (runes != null && runes.length > 0 && runes[0] >= ' ') {
                 for (char c : runes) {
                     editBuffer.insert(cursorPos, c);
                     cursorPos++;
@@ -308,7 +315,7 @@ final class ConfigPalette {
         // Strip newlines - config values are single-line
         String cleaned = content.replace("\r\n", "").replace("\n", "").replace("\r", "");
         for (char c : cleaned.toCharArray()) {
-            if (c >= 32) {
+            if (c >= ' ') {
                 editBuffer.insert(cursorPos, c);
                 cursorPos++;
             }

@@ -16,6 +16,8 @@ public final class TuiTheme {
 
     private static final char ANSI_ESC = '\u001B';
     private static final String ANSI_RESET = ANSI_ESC + "[0m";
+    private static final String ELLIPSIS = "...";
+    private static final int ELLIPSIS_WIDTH = ELLIPSIS.length();
 
     public static final TerminalColor PRIMARY = Color.color("#00FF41");
     public static final TerminalColor SECONDARY = Color.color("#39FF14");
@@ -102,8 +104,8 @@ public final class TuiTheme {
         if (text == null) return "";
         int visualLen = visualWidth(text);
         if (visualLen <= width) return text;
-        if (width <= 3) return truncatePreservingAnsi(text, width);
-        return truncatePreservingAnsi(text, width - 3) + "...";
+        if (width <= ELLIPSIS_WIDTH) return truncatePreservingAnsi(text, width);
+        return truncatePreservingAnsi(text, width - ELLIPSIS_WIDTH) + ELLIPSIS;
     }
 
     /** Truncates styled text to a target visual width while preserving ANSI escape sequences. */

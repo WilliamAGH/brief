@@ -110,7 +110,7 @@ final class PasteRoutingModel implements Model, MouseTargetProvider {
         StringBuilder normalized = new StringBuilder(content.length());
         boolean lastInsertedSpace = false;
         for (char ch : content.toCharArray()) {
-            if (ch == '\r' || ch == '\n' || ch == '\t' || ch < 32) {
+            if (ch == '\r' || ch == '\n' || ch == '\t' || ch < ' ') {
                 if (!lastInsertedSpace) {
                     normalized.append(' ');
                     lastInsertedSpace = true;
