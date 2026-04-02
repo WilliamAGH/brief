@@ -133,6 +133,7 @@ public final class ChatConversationScreen
     private int width = 80;
     private int height = 24;
     private static final int MAX_COMPOSER_LINES = 6;
+    private static final int MOUSE_SCROLL_LINES = 3;
 
     private boolean waiting = false;
     private final HistoryViewport historyViewport = new HistoryViewport();
@@ -259,11 +260,11 @@ public final class ChatConversationScreen
 
         if (msg instanceof MouseMessage mouse && mouse.isWheel()) {
             if (mouse.getButton() == MouseButton.MouseButtonWheelUp) {
-                historyViewport.scrollUp(3);
+                historyViewport.scrollUp(MOUSE_SCROLL_LINES);
                 return UpdateResult.from(this);
             }
             if (mouse.getButton() == MouseButton.MouseButtonWheelDown) {
-                historyViewport.scrollDown(3);
+                historyViewport.scrollDown(MOUSE_SCROLL_LINES);
                 return UpdateResult.from(this);
             }
         }
@@ -272,9 +273,9 @@ public final class ChatConversationScreen
             MouseSelectionController.HandleResult result = mouseSelection.handle(mouse);
             if (result != null) {
                 if (result.scrollHint() == MouseSelectionController.ScrollHint.UP) {
-                    historyViewport.scrollUp(3);
+                    historyViewport.scrollUp(MOUSE_SCROLL_LINES);
                 } else if (result.scrollHint() == MouseSelectionController.ScrollHint.DOWN) {
-                    historyViewport.scrollDown(3);
+                    historyViewport.scrollDown(MOUSE_SCROLL_LINES);
                 }
                 if (result.command() != null) return UpdateResult.from(this, result.command());
             }
