@@ -136,6 +136,7 @@ public final class ChatConversationScreen
     private int height = 24;
     private static final int MAX_COMPOSER_LINES = 6;
     private static final int MOUSE_SCROLL_LINES = 3;
+    private static final long ENTER_DEBOUNCE_WINDOW_MS = 1000L;
 
     private boolean waiting = false;
     private final HistoryViewport historyViewport = new HistoryViewport();
@@ -572,7 +573,10 @@ public final class ChatConversationScreen
         if (text.isEmpty() || waiting) return UpdateResult.from(this);
 
         long now = System.currentTimeMillis();
-        if (text.equals(lastEnterText) && (now - lastEnterAtMs) < 1000) {
+        if (
+            text.equals(lastEnterText) &&
+            (now - lastEnterAtMs) < ENTER_DEBOUNCE_WINDOW_MS
+        ) {
             composer.reset();
             clearPasteState();
             return UpdateResult.from(this);
@@ -1050,7 +1054,7 @@ public final class ChatConversationScreen
 
             // /locate: without args opens interactive overlay, with args goes to LLM
             if (sc instanceof LocateSlashCommand.Command) {
-                String locateQuery = parseLocateQuery(text);
+                String locateQuery = LocateSlashCommand.extractQuery(text);
                 if (locateQuery.isBlank()) {
                     // No args: open interactive input overlay
                     composer.reset();
@@ -1191,26 +1195,13 @@ public final class ChatConversationScreen
         ) return false;
         if (
             slashCommand instanceof LocateSlashCommand.Command &&
-            parseLocateQuery(normalized).isBlank()
+            LocateSlashCommand.extractQuery(normalized).isBlank()
         ) return false;
         return SLASH_LLM_OVERRIDES.containsKey(slashCommand.name());
     }
 
     private static String normalizeSubmittedText(String text) {
         return text == null ? "" : text.trim();
-    }
-
-    private static String parseLocateQuery(String input) {
-        if (input == null) return "";
-        String trimmed = input.trim();
-        if (!trimmed.toLowerCase().startsWith("/locate")) return "";
-        String rest = trimmed.substring("/locate".length()).trim();
-        if (
-            rest.length() >= 2 && rest.startsWith("\"") && rest.endsWith("\"")
-        ) {
-            rest = rest.substring(1, rest.length() - 1);
-        }
-        return rest;
     }
 
     private Conversation newConversationLikeCurrent() {
@@ -1603,7 +1594,7 @@ public final class ChatConversationScreen
     private void append(Role role, ChatMessage.Source source, String content) {
         int index = conversation.getMessages().size();
         conversation.addMessage(
-            new ChatMessage(
+            ChatMessage.builder(
                 "m_%04d_%s".formatted(
                     index + 1,
                     UUID.randomUUID().toString().substring(0, 8)
@@ -1615,13 +1606,8 @@ public final class ChatConversationScreen
                 content == null ? "" : content,
                 OffsetDateTime.now(ZoneOffset.UTC),
                 conversation.getDefaultModel(),
-                conversation.getProvider().name().toLowerCase(),
-                null,
-                null,
-                null,
-                null,
-                null
-            )
+                conversation.getProvider().name().toLowerCase()
+            ).build()
         );
     }
 
