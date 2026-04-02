@@ -10,7 +10,7 @@
 #   private static final int MAX_RETRIES = 5;
 #   if (count > MAX_RETRIES) { ... }
 
-id: java-no-magic-literals-comparison
+id: java-no-magic-literals
 message: "[CS1g] Magic literal in comparison. Use a named constant (except 0/1)."
 severity: warning
 language: java

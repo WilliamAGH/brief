@@ -552,7 +552,7 @@ public final class ChatConversationScreen
     }
 
     private UpdateResult<? extends Model> handleEnterKey() {
-        String text = resolveSubmitText();
+        String text = normalizeSubmittedText(resolveSubmitText());
         if (text.isEmpty() || waiting) return UpdateResult.from(this);
 
         long now = System.currentTimeMillis();
@@ -563,7 +563,9 @@ public final class ChatConversationScreen
         }
         lastEnterText = text;
         lastEnterAtMs = now;
-        inputHistory.push(text);
+        if (storesInputHistory(text)) {
+            inputHistory.push(text);
+        }
         return submitUserText(text);
     }
 
@@ -1006,8 +1008,7 @@ public final class ChatConversationScreen
     }
 
     private UpdateResult<? extends Model> submitUserText(String text) {
-        if (text == null) text = "";
-        text = text.trim();
+        text = normalizeSubmittedText(text);
         if (text.isEmpty() || waiting) return UpdateResult.from(this);
 
         if (text.startsWith("/")) {
@@ -1155,6 +1156,32 @@ public final class ChatConversationScreen
                 )
             );
         }
+    }
+
+    static boolean storesInputHistory(String text) {
+        String normalized = normalizeSubmittedText(text);
+        if (normalized.isEmpty()) return false;
+        if (!normalized.startsWith("/")) return true;
+
+        SlashCommand slashCommand = SlashCommands.matchInvocation(
+            SlashCommands.defaults(),
+            normalized
+        );
+        if (
+            slashCommand == null ||
+            slashCommand.quits() ||
+            slashCommand instanceof ModelSlashCommand ||
+            slashCommand instanceof ConfigSlashCommand
+        ) return false;
+        if (
+            slashCommand instanceof LocateSlashCommand.Command &&
+            parseLocateQuery(normalized).isBlank()
+        ) return false;
+        return SLASH_LLM_OVERRIDES.containsKey(slashCommand.name());
+    }
+
+    private static String normalizeSubmittedText(String text) {
+        return text == null ? "" : text.trim();
     }
 
     private static String parseLocateQuery(String input) {

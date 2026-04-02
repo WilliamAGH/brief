@@ -27,11 +27,21 @@ ignores:
 
 rule:
   any:
-    # identifiers
-    - kind: identifier
-      regex: (Legacy|Deprecated|Old)
     # class declarations
     - kind: class_declaration
       has:
+        field: name
         kind: identifier
-        regex: (Legacy|Deprecated|Old)
+        regex: .*(Legacy|Deprecated|Old).*
+    # interface declarations
+    - kind: interface_declaration
+      has:
+        field: name
+        kind: identifier
+        regex: .*(Legacy|Deprecated|Old).*
+    # method declarations
+    - kind: method_declaration
+      has:
+        field: name
+        kind: identifier
+        regex: .*(Legacy|Deprecated|Old).*

@@ -1,6 +1,6 @@
 package com.williamcallahan.chatclient.ui;
 
-import com.williamcallahan.chatclient.AppInfo;
+import com.williamcallahan.chatclient.AppMetadata;
 import com.williamcallahan.chatclient.Config;
 import com.williamcallahan.tui4j.compat.bubbletea.Command;
 import com.williamcallahan.tui4j.compat.bubbletea.Message;
@@ -59,7 +59,7 @@ public abstract class ConfigPromptScreen implements Model {
 
     @Override
     public Command init() {
-        return batch(setWindowTitle(AppInfo.NAME + " " + AppInfo.VERSION), Command.checkWindowSize());
+        return batch(setWindowTitle(AppMetadata.NAME + " " + AppMetadata.VERSION), Command.checkWindowSize());
     }
 
     @Override
@@ -113,7 +113,7 @@ public abstract class ConfigPromptScreen implements Model {
 
         Style titleStyle = TuiTheme.brandTitle();
         Style versionStyle = Style.newStyle().foreground(TuiTheme.MUTED);
-        String headerLine = titleStyle.render(AppInfo.NAME) + " " + versionStyle.render(AppInfo.VERSION);
+        String headerLine = titleStyle.render(AppMetadata.NAME) + " " + versionStyle.render(AppMetadata.VERSION);
 
         Style welcomeStyle = Style.newStyle().foreground(TuiTheme.LIGHT).bold(true);
         Style bodyStyle = Style.newStyle().foreground(TuiTheme.MUTED);
