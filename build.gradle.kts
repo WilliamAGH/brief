@@ -94,6 +94,10 @@ val generateVersionProps by tasks.registering {
 }
 sourceSets.main { resources.srcDir(generateVersionProps.map { layout.buildDirectory.dir("generated-resources") }) }
 
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
+}
+
 tasks.shadowJar {
     archiveClassifier.set("all")
     mergeServiceFiles()
@@ -107,4 +111,10 @@ tasks.shadowJar {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.register("deprecationCheck") {
+    group = "verification"
+    description = "Fails the build on deprecated API usage in main or test sources."
+    dependsOn(tasks.compileJava, tasks.compileTestJava)
 }
