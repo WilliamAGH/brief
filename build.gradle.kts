@@ -1,6 +1,7 @@
 plugins {
     id("java")
     id("application")
+    id("com.gradleup.shadow") version "9.4.1"
 }
 
 group = "com.williamcallahan"
@@ -92,6 +93,17 @@ val generateVersionProps by tasks.registering {
     }
 }
 sourceSets.main { resources.srcDir(generateVersionProps.map { layout.buildDirectory.dir("generated-resources") }) }
+
+tasks.shadowJar {
+    archiveClassifier.set("all")
+    mergeServiceFiles()
+    manifest {
+        attributes(
+            "Main-Class" to "com.williamcallahan.chatclient.Main",
+            "Enable-Native-Access" to "ALL-UNNAMED",
+        )
+    }
+}
 
 tasks.test {
     useJUnitPlatform()

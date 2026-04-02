@@ -35,4 +35,19 @@ jobs:
           ./gradlew --version
 
       - name: Build application
-        run: ./gradlew build --no-daemon
+        run: ./gradlew build shadowJar --no-daemon
+
+      - name: Extract branch name
+        if: github.event_name == 'push'
+        id: branch
+        env:
+          REF: ${{ github.ref_name }}
+        run: echo "NAME=$REF" >> "$GITHUB_OUTPUT"
+
+      - name: Upload fat JAR
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: brief-${{ steps.branch.outputs.NAME }}
+          path: build/libs/*-all.jar
+          retention-days: 30
