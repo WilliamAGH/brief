@@ -2,6 +2,7 @@ package com.williamcallahan.chatclient.ui.maps;
 
 import com.williamcallahan.chatclient.service.AppleMapsService.PlaceResult;
 import com.williamcallahan.chatclient.ui.PaletteItem;
+import com.williamcallahan.chatclient.ui.TuiTheme;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,6 +12,7 @@ import java.util.List;
 public record PlaceItem(PlaceResult place) implements PaletteItem {
 
     private static final int MAX_DESC_LENGTH = 50;
+    private static final int MIN_ADDRESS_PARTS_FOR_REDUCTION = 3;
 
     @Override
     public String name() {
@@ -51,7 +53,7 @@ public record PlaceItem(PlaceResult place) implements PaletteItem {
         }
 
         // Try without the first part (street address) if we have 3+ parts
-        if (parts.length >= 3) {
+        if (parts.length >= MIN_ADDRESS_PARTS_FOR_REDUCTION) {
             List<String> reduced = new ArrayList<>();
             for (int i = 1; i < parts.length; i++) {
                 if (!parts[i].isBlank()) {
@@ -78,9 +80,7 @@ public record PlaceItem(PlaceResult place) implements PaletteItem {
     }
 
     private static String truncate(String s, int maxLen) {
-        if (s == null || s.length() <= maxLen) return s;
-        if (maxLen <= 3) return s.substring(0, maxLen);
-        return s.substring(0, maxLen - 3) + "...";
+        return TuiTheme.truncate(s, maxLen);
     }
 
     private String getCategoryIcon() {
