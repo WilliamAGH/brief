@@ -19,6 +19,9 @@ import java.util.List;
  */
 public final class PlacesOverlay {
 
+    private static final char FIRST_PRINTABLE_CHARACTER = ' ';
+    private static final int INPUT_SCROLL_PREFIX_LENGTH = 3;
+
     private boolean open = false;
     private boolean inputMode = false;
     private StringBuilder inputBuffer = new StringBuilder();
@@ -215,7 +218,7 @@ public final class PlacesOverlay {
             char[] runes = key.runes();
             if (runes != null) {
                 for (char c : runes) {
-                    if (c >= 32) { // Printable characters
+                    if (c >= FIRST_PRINTABLE_CHARACTER) {
                         inputBuffer.append(c);
                     }
                 }
@@ -322,8 +325,12 @@ public final class PlacesOverlay {
         int maxInputLen = innerBoxWidth - 2;
         if (TuiTheme.visualWidth(displayInput) > maxInputLen) {
             // Truncate from the start to show the end of the input
-            while (TuiTheme.visualWidth(displayInput) > maxInputLen && displayInput.length() > 3) {
-                displayInput = "> " + displayInput.substring(3);
+            while (
+                TuiTheme.visualWidth(displayInput) > maxInputLen &&
+                displayInput.length() > INPUT_SCROLL_PREFIX_LENGTH
+            ) {
+                displayInput =
+                    "> " + displayInput.substring(INPUT_SCROLL_PREFIX_LENGTH);
             }
         }
         String inputLine = " " + inputStyle.render(displayInput);

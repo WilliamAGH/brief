@@ -30,6 +30,8 @@ public final class WeatherForecastTool implements Tool {
         .connectTimeout(Duration.ofSeconds(10))
         .build();
     private static final int GEOCODE_CANDIDATES = 20;
+    private static final int HTTP_SUCCESS_MIN = 200;
+    private static final int HTTP_REDIRECT_MIN = 300;
     /**
      * WMO Weather Interpretation Codes (WW).
      * @see <a href="https://open-meteo.com/en/docs">Open-Meteo API docs</a>
@@ -349,7 +351,10 @@ public final class WeatherForecastTool implements Tool {
             req,
             HttpResponse.BodyHandlers.ofString()
         );
-        if (res.statusCode() < 200 || res.statusCode() >= 300) {
+        if (
+            res.statusCode() < HTTP_SUCCESS_MIN ||
+            res.statusCode() >= HTTP_REDIRECT_MIN
+        ) {
             throw new IllegalStateException(
                 "HTTP " + res.statusCode() + " from " + uri
             );
