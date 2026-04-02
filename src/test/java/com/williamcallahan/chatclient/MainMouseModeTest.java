@@ -7,10 +7,10 @@ import org.junit.jupiter.api.Test;
 class MainMouseModeTest {
 
     @Test
-    void defaultsToNativeWhenUnsetOrUnknown() {
-        assertEquals("0", Main.normalizeMouseMode(null));
-        assertEquals("0", Main.normalizeMouseMode(""));
-        assertEquals("0", Main.normalizeMouseMode("unknown"));
+    void defaultsToSelectWhenUnsetOrUnknown() {
+        assertEquals("select", Main.normalizeMouseMode(null));
+        assertEquals("select", Main.normalizeMouseMode(""));
+        assertEquals("select", Main.normalizeMouseMode("unknown"));
     }
 
     @Test

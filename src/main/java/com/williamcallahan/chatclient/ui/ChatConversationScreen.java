@@ -5,6 +5,8 @@ import static com.williamcallahan.tui4j.compat.bubbletea.Command.setWindowTitle;
 
 import com.williamcallahan.applemaps.AppleMaps;
 import com.williamcallahan.chatclient.Config;
+import com.williamcallahan.chatclient.MouseMode;
+import com.williamcallahan.chatclient.RuntimeTrace;
 import com.williamcallahan.chatclient.domain.ChatMessage;
 import com.williamcallahan.chatclient.domain.Conversation;
 import com.williamcallahan.chatclient.domain.Role;
@@ -180,9 +182,9 @@ public final class ChatConversationScreen
         this.height = Math.max(12, height);
         this.needsModelSelection = needsModelSelection;
         this.printToScrollback = "1".equals(System.getenv("BRIEF_SCROLLBACK"));
-        this.mouseSelectionEnabled = "select".equalsIgnoreCase(
-            resolveMouseMode()
-        );
+        this.mouseSelectionEnabled = MouseMode
+            .fromEnvironment()
+            .enablesHistorySelection();
         this.showToolMessages = "1".equals(System.getenv("BRIEF_SHOW_TOOLS"));
 
         this.openAiService = new OpenAiService(config);
@@ -212,12 +214,6 @@ public final class ChatConversationScreen
     @Override
     public List<MouseTarget> mouseTargets() {
         return mouseTargets;
-    }
-
-    private static String resolveMouseMode() {
-        String mode = System.getenv("BRIEF_MOUSE");
-        if (mode == null || mode.isBlank()) return "select";
-        return mode;
     }
 
     private static List<Tool> buildTools(Config config) {
@@ -259,26 +255,42 @@ public final class ChatConversationScreen
         }
 
         if (msg instanceof MouseMessage mouse && mouse.isWheel()) {
+            int beforeOffset = historyViewport.scrollOffsetLines();
             if (mouse.getButton() == MouseButton.MouseButtonWheelUp) {
                 historyViewport.scrollUp(MOUSE_SCROLL_LINES);
+                RuntimeTrace.log(
+                    "wheel",
+                    "button=up row=" +
+                    mouse.row() +
+                    " col=" +
+                    mouse.column() +
+                    " offset=" +
+                    beforeOffset +
+                    "->" +
+                    historyViewport.scrollOffsetLines()
+                );
                 return UpdateResult.from(this);
             }
             if (mouse.getButton() == MouseButton.MouseButtonWheelDown) {
                 historyViewport.scrollDown(MOUSE_SCROLL_LINES);
+                RuntimeTrace.log(
+                    "wheel",
+                    "button=down row=" +
+                    mouse.row() +
+                    " col=" +
+                    mouse.column() +
+                    " offset=" +
+                    beforeOffset +
+                    "->" +
+                    historyViewport.scrollOffsetLines()
+                );
                 return UpdateResult.from(this);
             }
         }
 
         if (mouseSelectionEnabled && msg instanceof MouseMessage mouse) {
-            MouseSelectionController.HandleResult result = mouseSelection.handle(mouse);
-            if (result != null) {
-                if (result.scrollHint() == MouseSelectionController.ScrollHint.UP) {
-                    historyViewport.scrollUp(MOUSE_SCROLL_LINES);
-                } else if (result.scrollHint() == MouseSelectionController.ScrollHint.DOWN) {
-                    historyViewport.scrollDown(MOUSE_SCROLL_LINES);
-                }
-                if (result.command() != null) return UpdateResult.from(this, result.command());
-            }
+            Command cmd = mouseSelection.handle(mouse);
+            if (cmd != null) return UpdateResult.from(this, cmd);
             if (mouseSelection.isSelecting()) return UpdateResult.from(this);
         }
 
@@ -401,7 +413,9 @@ public final class ChatConversationScreen
         return null;
     }
 
-    private UpdateResult<? extends Model> handleInputHistory(KeyPressMessage key) {
+    private UpdateResult<? extends Model> handleInputHistory(
+        KeyPressMessage key
+    ) {
         if (key.type() == KeyType.KeyUp && composer.line() == 0) {
             String entry = inputHistory.previous(composer.value());
             if (entry != null) {
@@ -410,9 +424,11 @@ public final class ChatConversationScreen
                 return UpdateResult.from(this);
             }
         }
-        if (key.type() == KeyType.KeyDown
-                && inputHistory.isBrowsing()
-                && composer.line() >= composer.lineCount() - 1) {
+        if (
+            key.type() == KeyType.KeyDown &&
+            inputHistory.isBrowsing() &&
+            composer.line() >= composer.lineCount() - 1
+        ) {
             String entry = inputHistory.next();
             if (entry != null) {
                 composer.reset();

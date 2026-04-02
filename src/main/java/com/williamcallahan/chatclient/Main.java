@@ -22,10 +22,12 @@ public class Main {
         "\u001b[?1000l\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?2004l\u001b[?25h\u001b]22;\u001b\\";
 
     public static void main(String[] args) {
+        RuntimeTrace.reset("brief");
         // Register shutdown hook to reset terminal on JVM exit
         Runtime.getRuntime().addShutdownHook(
             new Thread(
                 () -> {
+                    RuntimeTrace.log("shutdown", "reset terminal");
                     System.out.print(RESET_TERMINAL);
                     System.out.print(ENABLE_AUTOWRAP);
                     System.out.flush();
@@ -41,8 +43,8 @@ public class Main {
         // Set BRIEF_ALT_SCREEN=1 to enable the alternate screen.
         boolean useAlt = "1".equals(System.getenv("BRIEF_ALT_SCREEN"));
         // Mouse behavior:
-        // - default/unset: native terminal selection/copy (no in-app wheel scrolling)
-        // - 0/off/native: native terminal selection/copy
+        // - default/unset: in-app history selection + wheel scrolling
+        // - 0/off/native: native terminal selection/copy + terminal scrollback
         // - 1/all: tui4j all-motion tracking (best wheel support; native selection usually disabled)
         // - wheel/btn: wheel + click tracking (no drag-to-copy selection)
         // - select: in-app drag-to-copy selection + wheel scrolling
@@ -64,10 +66,16 @@ public class Main {
         }
 
         // Terminal mode setup - only after config validation succeeds
-        boolean enableSelectMouse = "select".equalsIgnoreCase(mouseMode);
-        boolean enableAllMotionMouse = "1".equals(mouseMode);
-        boolean enableCellMotionMouse =
-            enableSelectMouse || "wheel".equals(mouseMode);
+        MouseMode resolvedMouseMode = MouseMode.parse(mouseMode);
+        RuntimeTrace.log(
+            "startup",
+            "rawEnv=" +
+            System.getenv("BRIEF_MOUSE") +
+            " resolved=" +
+            resolvedMouseMode.value() +
+            " codeSource=" +
+            Main.class.getProtectionDomain().getCodeSource().getLocation()
+        );
 
         if (disableAutoWrap) {
             System.out.print(DISABLE_AUTOWRAP);
@@ -85,15 +93,38 @@ public class Main {
             if (useAlt) {
                 program = program.withAltScreen();
             }
-            if (enableAllMotionMouse) {
+            if (resolvedMouseMode.enablesAllMotion()) {
                 program = program.withMouseAllMotion();
-            } else if (enableCellMotionMouse) {
+            } else if (resolvedMouseMode.enablesCellMotion()) {
                 program = program.withMouseCellMotion();
             }
-            if (!"0".equals(mouseMode)) {
+            if (resolvedMouseMode.enablesMouseClicks()) {
                 program = program.withMouseClicks();
+            }
+            if (resolvedMouseMode.enablesTargetCursor()) {
                 program = program.withMouseTargetCursor();
             }
+            if (resolvedMouseMode.enablesSelectionCursor()) {
+                program = program.withMouseSelectionCursor();
+            }
+            if (resolvedMouseMode.enablesSelectionAutoScroll()) {
+                program = program.withMouseSelectionAutoScroll();
+            }
+            RuntimeTrace.log(
+                "startup",
+                "options allMotion=" +
+                resolvedMouseMode.enablesAllMotion() +
+                " cellMotion=" +
+                resolvedMouseMode.enablesCellMotion() +
+                " clicks=" +
+                resolvedMouseMode.enablesMouseClicks() +
+                " targetCursor=" +
+                resolvedMouseMode.enablesTargetCursor() +
+                " selectionCursor=" +
+                resolvedMouseMode.enablesSelectionCursor() +
+                " selectionAutoScroll=" +
+                resolvedMouseMode.enablesSelectionAutoScroll()
+            );
             program.run();
         } finally {
             // tui4j handles mouse cleanup in Program.run() finally block via disableMouse()
@@ -163,20 +194,10 @@ public class Main {
     }
 
     static String normalizeMouseMode(String rawMode) {
-        if (rawMode == null || rawMode.isBlank()) {
-            return "0";
-        }
-        String mode = rawMode.trim().toLowerCase();
-        return switch (mode) {
-            case "0", "off", "native", "false" -> "0";
-            case "1", "all", "true" -> "1";
-            case "wheel", "btn", "buttons" -> "wheel";
-            case "select" -> "select";
-            default -> "0";
-        };
+        return MouseMode.parse(rawMode).value();
     }
 
     private static String resolveMouseMode() {
-        return normalizeMouseMode(System.getenv("BRIEF_MOUSE"));
+        return MouseMode.fromEnvironment().value();
     }
 }
