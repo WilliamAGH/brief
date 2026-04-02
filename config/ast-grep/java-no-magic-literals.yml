@@ -1,5 +1,6 @@
-# [CS1g] No magic literals (except 0/1/-1)
+# [CS1g] No magic literals (except 0/1)
 # Magic numbers obscure intent. Use named constants.
+# Note: -1 is not exempt because the Java AST parses it as unary minus on 1.
 #
 # Forbidden:
 #   if (count > 5) { ... }
@@ -10,7 +11,7 @@
 #   if (count > MAX_RETRIES) { ... }
 
 id: java-no-magic-literals-comparison
-message: "[CS1g] Magic literal in comparison. Use a named constant (except 0/1/-1)."
+message: "[CS1g] Magic literal in comparison. Use a named constant (except 0/1)."
 severity: warning
 language: java
 rule:
