@@ -410,7 +410,7 @@ public final class PlacesOverlay {
         box.add(borderStyle.render("┌" + "─".repeat(boxWidth - 2) + "┐"));
 
         // Title
-        String icon = getCategoryIcon(detailPlace.category());
+        String icon = PlaceItem.getCategoryIcon(detailPlace.category());
         String title = icon + " " + detailPlace.name();
         if (TuiTheme.visualWidth(title) > innerBoxWidth - 2) {
             title = TuiTheme.truncate(title, innerBoxWidth - 2);
@@ -442,7 +442,7 @@ public final class PlacesOverlay {
         if (!detailPlace.address().isBlank()) {
             String addrLabel = labelStyle.render("Address: ");
             String addrValue = valueStyle.render(
-                truncateField(detailPlace.address(), innerBoxWidth - 12)
+                TuiTheme.truncate(detailPlace.address(), innerBoxWidth - 12)
             );
             box.add(
                 borderStyle.render("│") +
@@ -492,7 +492,7 @@ public final class PlacesOverlay {
         if (detailPlace.url() != null && !detailPlace.url().isBlank()) {
             String urlLabel = labelStyle.render("Website: ");
             String urlValue = valueStyle.render(
-                truncateField(detailPlace.url(), innerBoxWidth - 12)
+                TuiTheme.truncate(detailPlace.url(), innerBoxWidth - 12)
             );
             box.add(
                 borderStyle.render("│") +
@@ -547,43 +547,4 @@ public final class PlacesOverlay {
         return overlay;
     }
 
-    private String truncateField(String value, int maxWidth) {
-        if (value == null) return "";
-        if (value.length() <= maxWidth) return value;
-        return value.substring(0, maxWidth - 3) + "...";
-    }
-
-    private String getCategoryIcon(String category) {
-        if (category == null || category.isBlank()) return "📍";
-        String lower = category.toLowerCase();
-        if (lower.contains("coffee") || lower.contains("cafe")) return "☕";
-        if (lower.contains("restaurant") || lower.contains("food")) return "🍽";
-        if (lower.contains("bar") || lower.contains("pub")) return "🍺";
-        if (lower.contains("hotel") || lower.contains("lodging")) return "🏨";
-        if (lower.contains("gas") || lower.contains("fuel")) return "⛽";
-        if (
-            lower.contains("hospital") || lower.contains("medical")
-        ) return "🏥";
-        if (lower.contains("pharmacy") || lower.contains("drug")) return "💊";
-        if (lower.contains("bank") || lower.contains("atm")) return "🏦";
-        if (
-            lower.contains("grocery") || lower.contains("supermarket")
-        ) return "🛒";
-        if (lower.contains("gym") || lower.contains("fitness")) return "💪";
-        if (lower.contains("park")) return "🌳";
-        if (lower.contains("museum") || lower.contains("gallery")) return "🏛";
-        if (lower.contains("theater") || lower.contains("cinema")) return "🎭";
-        if (lower.contains("airport")) return "✈";
-        if (lower.contains("train") || lower.contains("station")) return "🚉";
-        if (
-            lower.contains("school") || lower.contains("university")
-        ) return "🎓";
-        if (lower.contains("library")) return "📚";
-        if (
-            lower.contains("shop") ||
-            lower.contains("store") ||
-            lower.contains("mall")
-        ) return "🛍";
-        return "📍";
-    }
 }

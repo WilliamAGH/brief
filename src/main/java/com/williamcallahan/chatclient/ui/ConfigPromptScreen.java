@@ -7,6 +7,7 @@ import com.williamcallahan.tui4j.compat.bubbletea.Message;
 import com.williamcallahan.tui4j.compat.bubbletea.Model;
 import com.williamcallahan.tui4j.compat.bubbletea.PasteMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.UpdateResult;
+import com.williamcallahan.tui4j.compat.lipgloss.Join;
 import com.williamcallahan.tui4j.compat.lipgloss.Position;
 import com.williamcallahan.tui4j.compat.lipgloss.border.StandardBorder;
 import com.williamcallahan.tui4j.compat.lipgloss.Style;
@@ -118,7 +119,7 @@ public abstract class ConfigPromptScreen implements Model {
         Style welcomeStyle = Style.newStyle().foreground(TuiTheme.LIGHT).bold(true);
         Style bodyStyle = Style.newStyle().foreground(TuiTheme.MUTED);
 
-        String content = TuiTheme.joinVertical(Position.Left,
+        String content = Join.joinVertical(Position.Left,
             "",
             welcomeStyle.render(promptTitle()),
             bodyStyle.render(promptBody()),
@@ -140,7 +141,7 @@ public abstract class ConfigPromptScreen implements Model {
             .padding(0, 2, 0, 2)
             .width(boxWidth);
 
-        return TuiTheme.joinVertical(Position.Left,
+        return Join.joinVertical(Position.Left,
             "",
             indent(headerLine, 2),
             "",

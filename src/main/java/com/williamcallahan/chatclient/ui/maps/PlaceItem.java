@@ -16,7 +16,7 @@ public record PlaceItem(PlaceResult place) implements PaletteItem {
 
     @Override
     public String name() {
-        return getCategoryIcon() + " " + place.name();
+        return getCategoryIcon(place.category()) + " " + place.name();
     }
 
     @Override
@@ -83,8 +83,7 @@ public record PlaceItem(PlaceResult place) implements PaletteItem {
         return TuiTheme.truncate(s, maxLen);
     }
 
-    private String getCategoryIcon() {
-        String category = place.category();
+    static String getCategoryIcon(String category) {
         if (category == null || category.isBlank()) return "📍";
         String lower = category.toLowerCase();
         if (lower.contains("coffee") || lower.contains("cafe")) return "☕";

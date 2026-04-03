@@ -1,7 +1,7 @@
 package com.williamcallahan.chatclient.ui;
 
-import com.williamcallahan.tui4j.compat.lipgloss.Join;
-import com.williamcallahan.tui4j.compat.lipgloss.Position;
+import com.williamcallahan.tui4j.ansi.TextWidth;
+import com.williamcallahan.tui4j.ansi.Truncate;
 import com.williamcallahan.tui4j.compat.lipgloss.Style;
 import com.williamcallahan.tui4j.compat.lipgloss.color.Color;
 import com.williamcallahan.tui4j.compat.lipgloss.color.TerminalColor;
@@ -13,11 +13,6 @@ import com.williamcallahan.tui4j.compat.lipgloss.color.TerminalColor;
 public final class TuiTheme {
 
     private TuiTheme() {}
-
-    private static final char ANSI_ESC = '\u001B';
-    private static final String ANSI_RESET = ANSI_ESC + "[0m";
-    private static final String ELLIPSIS = "...";
-    private static final int ELLIPSIS_WIDTH = ELLIPSIS.length();
 
     public static final TerminalColor PRIMARY = Color.color("#00FF41");
     public static final TerminalColor SECONDARY = Color.color("#39FF14");
@@ -79,13 +74,9 @@ public final class TuiTheme {
         return divider(width, MUTED);
     }
 
-    public static String joinVertical(Position pos, String... strs) {
-        return Join.joinVertical(pos, strs);
-    }
-
     /** Centers text within a given width. */
     public static String center(String text, int width) {
-        int textLen = stripAnsi(text).length();
+        int textLen = visualWidth(text);
         if (textLen >= width) return text;
         int padding = (width - textLen) / 2;
         return " ".repeat(padding) + text;
@@ -94,7 +85,7 @@ public final class TuiTheme {
     /** Pads text with spaces on the right to reach a target width. */
     public static String padRight(String text, int width) {
         if (text == null) text = "";
-        int textLen = stripAnsi(text).length();
+        int textLen = visualWidth(text);
         if (textLen >= width) return text;
         return text + " ".repeat(width - textLen);
     }
@@ -102,64 +93,19 @@ public final class TuiTheme {
     /** Truncates text with an ellipsis if it exceeds the specified width, preserving ANSI styling. */
     public static String truncate(String text, int width) {
         if (text == null) return "";
-        int visualLen = visualWidth(text);
-        if (visualLen <= width) return text;
-        if (width <= ELLIPSIS_WIDTH) return truncatePreservingAnsi(text, width);
-        return truncatePreservingAnsi(text, width - ELLIPSIS_WIDTH) + ELLIPSIS;
-    }
-
-    /** Truncates styled text to a target visual width while preserving ANSI escape sequences. */
-    private static String truncatePreservingAnsi(String text, int targetWidth) {
-        if (text == null || targetWidth <= 0) return "";
-
-        StringBuilder result = new StringBuilder();
-        int visualCount = 0;
-        int i = 0;
-        boolean hasOpenAnsi = false;
-
-        while (i < text.length() && visualCount < targetWidth) {
-            int ansiEnd = findAnsiSequenceEnd(text, i);
-            if (ansiEnd > i) {
-                String seq = text.substring(i, ansiEnd);
-                result.append(seq);
-                hasOpenAnsi = !seq.equals(ANSI_RESET);
-                i = ansiEnd;
-            } else {
-                result.append(text.charAt(i));
-                visualCount++;
-                i++;
-            }
-        }
-
-        if (hasOpenAnsi) {
-            result.append(ANSI_RESET);
-        }
-        return result.toString();
-    }
-
-    /** Returns end index of ANSI sequence starting at pos, or pos if none found. */
-    private static int findAnsiSequenceEnd(String text, int pos) {
-        if (pos + 1 >= text.length()) return pos;
-        if (
-            text.charAt(pos) != ANSI_ESC || text.charAt(pos + 1) != '['
-        ) return pos;
-
-        int end = pos + 2;
-        while (end < text.length() && text.charAt(end) != 'm') {
-            end++;
-        }
-        return (end < text.length()) ? end + 1 : pos;
+        return Truncate.truncate(text, width, "...");
     }
 
     /** Removes all ANSI escape sequences from the provided text. */
     public static String stripAnsi(String text) {
         if (text == null) return "";
-        return text.replaceAll("\u001B\\[[;\\d]*m", "");
+        return Truncate.strip(text);
     }
 
-    /** Returns the visual width of the text, excluding ANSI escape sequences. */
+    /** Returns the visual cell width of the text, excluding ANSI escape sequences. */
     public static int visualWidth(String text) {
-        return stripAnsi(text).length();
+        if (text == null) return 0;
+        return TextWidth.measureCellWidth(text);
     }
 
     /** Removes trailing newlines from the provided string. */
