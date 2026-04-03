@@ -68,15 +68,7 @@ public class Main {
 
         // Terminal mode setup - only after config validation succeeds
         MouseMode resolvedMouseMode = MouseMode.parse(mouseMode);
-        RuntimeTrace.log(
-            "startup",
-            "rawEnv=" +
-            System.getenv("BRIEF_MOUSE") +
-            " resolved=" +
-            resolvedMouseMode.value() +
-            " codeSource=" +
-            Main.class.getProtectionDomain().getCodeSource().getLocation()
-        );
+        RuntimeTrace.log("startup", "mouse=" + resolvedMouseMode.value());
 
         if (disableAutoWrap) {
             System.out.print(DISABLE_AUTOWRAP);
@@ -111,21 +103,6 @@ public class Main {
             if (resolvedMouseMode.enablesSelectionAutoScroll()) {
                 program = program.withMouseSelectionAutoScroll();
             }
-            RuntimeTrace.log(
-                "startup",
-                "options allMotion=" +
-                resolvedMouseMode.enablesAllMotion() +
-                " cellMotion=" +
-                resolvedMouseMode.enablesCellMotion() +
-                " clicks=" +
-                resolvedMouseMode.enablesMouseClicks() +
-                " targetCursor=" +
-                resolvedMouseMode.enablesTargetCursor() +
-                " selectionCursor=" +
-                resolvedMouseMode.enablesSelectionCursor() +
-                " selectionAutoScroll=" +
-                resolvedMouseMode.enablesSelectionAutoScroll()
-            );
             program.run();
         } finally {
             // tui4j handles mouse cleanup in Program.run() finally block via disableMouse()
@@ -192,10 +169,6 @@ public class Main {
         } catch (IllegalArgumentException e) {
             LOG.log(Level.FINE, "SIGCONT not available on this platform", e);
         }
-    }
-
-    static String normalizeMouseMode(String rawMode) {
-        return MouseMode.parse(rawMode).value();
     }
 
     private static String resolveMouseMode() {
