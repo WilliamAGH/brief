@@ -14,7 +14,7 @@ class ToolExecutorTest {
 
     @Test
     void shouldIncludeUserMessage_AllowsInternalUserMessages() {
-        ChatMessage message = new ChatMessage(
+        ChatMessage message = ChatMessage.builder(
             "m_1",
             "c_1",
             0,
@@ -23,20 +23,15 @@ class ToolExecutorTest {
             "weather for san francisco",
             OffsetDateTime.now(ZoneOffset.UTC),
             "model",
-            "provider",
-            null,
-            null,
-            null,
-            null,
-            null
-        );
+            "provider"
+        ).build();
 
         assertTrue(ToolExecutor.shouldIncludeUserMessage(message, message.content()));
     }
 
     @Test
     void shouldIncludeUserMessage_RejectsLocalUserMessages() {
-        ChatMessage message = new ChatMessage(
+        ChatMessage message = ChatMessage.builder(
             "m_2",
             "c_1",
             1,
@@ -45,13 +40,8 @@ class ToolExecutorTest {
             "/weather",
             OffsetDateTime.now(ZoneOffset.UTC),
             "model",
-            "provider",
-            null,
-            null,
-            null,
-            null,
-            null
-        );
+            "provider"
+        ).build();
 
         assertFalse(ToolExecutor.shouldIncludeUserMessage(message, message.content()));
     }
