@@ -1,5 +1,6 @@
 [![Context7](src/main/resources/static/img/context7-badge.svg)](https://context7.com/williamagh/brief)
 [![DeepWiki](src/main/resources/static/img/deepwiki-badge.svg)](https://deepwiki.com/WilliamAGH/brief)
+[![Docs](https://img.shields.io/badge/docs-mintlify-18b884)](https://www.mintlify.com/WilliamAGH/brief)
 
 # Brief
 
@@ -27,6 +28,15 @@ For alternative providers (OpenRouter, Ollama, LMStudio), see the [configuration
 ### GitHub Releases
 
 Download from [releases](https://github.com/WilliamAGH/brief/releases/latest). Requires Java 25.
+
+Each release includes a distribution ZIP (with shell wrapper scripts) and a standalone fat JAR.
+To run the JAR directly:
+
+```bash
+java -jar brief.jar
+```
+
+Dev builds: [main](https://github.com/WilliamAGH/brief/releases/tag/snapshot-main) · [dev](https://github.com/WilliamAGH/brief/releases/tag/snapshot-dev) (updated on every push)
 
 ## Development
 

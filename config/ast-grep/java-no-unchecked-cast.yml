@@ -1,0 +1,18 @@
+# [LNT1] No unchecked casts
+# @SuppressWarnings("unchecked") bypasses type safety at compile time.
+# Use TypeReference<T> or typed domain records instead of casting.
+
+id: java-no-unchecked-cast
+language: java
+severity: warning
+message: "[LNT1] @SuppressWarnings(\"unchecked\") bypasses type safety. Fix: use TypeReference<T> for generic deserialization"
+
+rule:
+  pattern: '@SuppressWarnings("unchecked")'
+
+files:
+  - "src/main/java/**/*.java"
+
+ignores:
+  - "**/generated/**"
+  - "**/test/**"

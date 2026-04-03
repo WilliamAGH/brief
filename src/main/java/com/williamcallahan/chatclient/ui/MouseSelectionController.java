@@ -1,18 +1,17 @@
 package com.williamcallahan.chatclient.ui;
 
+import com.williamcallahan.chatclient.diagnostics.RuntimeTrace;
 import com.williamcallahan.tui4j.compat.bubbletea.Command;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseAction;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseButton;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseMessage;
-
+import com.williamcallahan.tui4j.term.Clipboard;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Manages mouse-based text selection and interaction within the chat history.
- * Tracks selection coordinates and maps them to visible history lines for highlighting and copying.
- */
+/** Manages mouse-based text selection and interaction within the chat history. */
 final class MouseSelectionController {
+
     private static final String STATUS_OPENED = "OPENED";
     private static final String STATUS_COPIED = "COPIED";
     private static final long STATUS_TIMEOUT_MS = 1200L;
@@ -152,9 +151,12 @@ final class MouseSelectionController {
         return Command.batch(commands);
     }
 
-    private Command handleMouseDrag(MouseMessage mouse, int col, List<Command> commands) {
+    private Command handleMouseDrag(
+        MouseMessage mouse,
+        int col,
+        List<Command> commands
+    ) {
         selectionMoved = true;
-        // Clamp motion to history area if it leaves
         int targetLineIndex = clampLineIndexForRow(mouse.row());
         if (targetLineIndex != -1) {
             selectionEndLineIndex = targetLineIndex;
@@ -171,19 +173,22 @@ final class MouseSelectionController {
         }
         selectionEndCol = col;
 
-        if (!selectionMoved) {
-            boolean opened = openLinkUnderMouse(mouse.row(), mouse.column());
-            if (!opened) {
-                Command copyCmd = copySelectedHistoryLines();
-                if (copyCmd != null) commands.add(copyCmd);
-            } else {
-                clearSelection();
-            }
-        } else {
-            Command copyCmd = copySelectedHistoryLines();
-            if (copyCmd != null) commands.add(copyCmd);
+        Command actionCommand = selectionMoved
+            ? copySelectedHistoryLines()
+            : clickAction(mouse.row(), mouse.column());
+        if (actionCommand != null) {
+            commands.add(actionCommand);
         }
         return Command.batch(commands);
+    }
+
+    private Command clickAction(int mouseRow, int mouseCol) {
+        Command openUrl = openLinkUnderMouse(mouseRow, mouseCol);
+        if (openUrl != null) {
+            clearSelection();
+            return openUrl;
+        }
+        return copySelectedHistoryLines();
     }
 
     private int visibleLineIndex(int mouseRow) {
@@ -215,27 +220,24 @@ final class MouseSelectionController {
         return Math.min(historyWindowStartIndex + (mouseRow - historyStartRow), maxLineIndex);
     }
 
-    private boolean openLinkUnderMouse(int mouseRow, int mouseCol) {
+    private Command openLinkUnderMouse(int mouseRow, int mouseCol) {
         int visibleRowIndex = visibleLineIndex(mouseRow);
-        if (visibleRowIndex < 0) return false;
+        if (visibleRowIndex < 0) return null;
 
         int col = mouseCol - historyStartCol;
         if (col < 0) col = 0;
 
         String line = visibleHistoryPlain.get(visibleRowIndex);
-        if (line == null || line.isBlank()) return false;
+        if (line == null || line.isBlank()) return null;
         if (col >= line.length()) col = line.length() - 1;
 
         String token = tokenAt(line, col);
         String url = UrlUtil.normalizeUrl(token);
-        if (url == null) return false;
+        if (url == null) return null;
 
-        if (openUrl(url)) {
-            lastActionAtMs = System.currentTimeMillis();
-            lastStatus = STATUS_OPENED;
-            return true;
-        }
-        return false;
+        lastActionAtMs = System.currentTimeMillis();
+        lastStatus = STATUS_OPENED;
+        return Command.openUrl(url);
     }
 
     private Command copySelectedHistoryLines() {
@@ -275,8 +277,16 @@ final class MouseSelectionController {
         String result = text.toString().trim();
         if (result.isEmpty()) return null;
 
+        boolean copiedLocally = Clipboard.tryCopy(result);
+        RuntimeTrace.log(
+            "copy",
+            "length=" + result.length() + " local=" + copiedLocally
+        );
         lastActionAtMs = System.currentTimeMillis();
         lastStatus = STATUS_COPIED;
+        if (copiedLocally) {
+            return null;
+        }
         return Command.copyToClipboard(result);
     }
 
@@ -291,23 +301,6 @@ final class MouseSelectionController {
         while (right < n && !Character.isWhitespace(line.charAt(right))) right++;
 
         return line.substring(left, right).trim();
-    }
-
-    private static boolean openUrl(String url) {
-        try {
-            String os = System.getProperty("os.name", "").toLowerCase();
-            if (os.contains("mac")) {
-                new ProcessBuilder("open", url).start();
-                return true;
-            } else if (os.contains("nix") || os.contains("nux") || os.contains("linux")) {
-                new ProcessBuilder("xdg-open", url).start();
-                return true;
-            } else if (os.contains("win")) {
-                new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
-                return true;
-            }
-        } catch (Exception ignored) {}
-        return false;
     }
 
     private void clampSelectionToHistory() {

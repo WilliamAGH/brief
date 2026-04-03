@@ -1,0 +1,34 @@
+# [CS1g] No magic literals (except 0/1)
+# Magic numbers obscure intent. Use named constants.
+# Note: -1 is not exempt because the Java AST parses it as unary minus on 1.
+#
+# Forbidden:
+#   if (count > 5) { ... }
+#   status == 200
+#
+# Required:
+#   private static final int MAX_RETRIES = 5;
+#   if (count > MAX_RETRIES) { ... }
+
+id: java-no-magic-literals
+message: "[CS1g] Magic literal in comparison. Use a named constant (except 0/1)."
+severity: warning
+language: java
+rule:
+  kind: binary_expression
+  any:
+    - pattern: $_ > $NUM
+    - pattern: $_ < $NUM
+    - pattern: $_ >= $NUM
+    - pattern: $_ <= $NUM
+    - pattern: $_ == $NUM
+    - pattern: $_ != $NUM
+  has:
+    kind: decimal_integer_literal
+    not:
+      regex: ^(0|1)$
+files:
+  - "src/main/java/**/*.java"
+  - "!src/main/java/**/generated/**"
+  - "!target/**"
+  - "!src/test/**"

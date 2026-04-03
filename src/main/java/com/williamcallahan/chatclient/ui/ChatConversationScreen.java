@@ -5,6 +5,7 @@ import static com.williamcallahan.tui4j.compat.bubbletea.Command.setWindowTitle;
 
 import com.williamcallahan.applemaps.AppleMaps;
 import com.williamcallahan.chatclient.Config;
+import com.williamcallahan.chatclient.MouseMode;
 import com.williamcallahan.chatclient.domain.ChatMessage;
 import com.williamcallahan.chatclient.domain.Conversation;
 import com.williamcallahan.chatclient.domain.Role;
@@ -133,9 +134,12 @@ public final class ChatConversationScreen
     private int width = 80;
     private int height = 24;
     private static final int MAX_COMPOSER_LINES = 6;
+    private static final int MOUSE_SCROLL_LINES = 3;
+    private static final long ENTER_DEBOUNCE_WINDOW_MS = 1000L;
 
     private boolean waiting = false;
     private final HistoryViewport historyViewport = new HistoryViewport();
+    private final InputHistory inputHistory = new InputHistory();
     private final MouseSelectionController mouseSelection =
         new MouseSelectionController();
     private List<MouseTarget> mouseTargets = List.of();
@@ -178,9 +182,9 @@ public final class ChatConversationScreen
         this.height = Math.max(12, height);
         this.needsModelSelection = needsModelSelection;
         this.printToScrollback = "1".equals(System.getenv("BRIEF_SCROLLBACK"));
-        this.mouseSelectionEnabled = "select".equalsIgnoreCase(
-            resolveMouseMode()
-        );
+        this.mouseSelectionEnabled = MouseMode
+            .fromEnvironment()
+            .enablesHistorySelection();
         this.showToolMessages = "1".equals(System.getenv("BRIEF_SHOW_TOOLS"));
 
         this.openAiService = new OpenAiService(config);
@@ -193,6 +197,7 @@ public final class ChatConversationScreen
 
         // Configure Textarea for multi-line input
         composer.setPrompt("› ");
+        composer.focus();
         composer
             .style()
             .prompt(TuiTheme.inputPrompt())
@@ -204,18 +209,11 @@ public final class ChatConversationScreen
         composer.setEndOfBufferCharacter(' ');
         composer.setMaxHeight(MAX_COMPOSER_LINES);
         composer.setWidth(Math.max(20, this.width - 8));
-        composer.focus();
     }
 
     @Override
     public List<MouseTarget> mouseTargets() {
         return mouseTargets;
-    }
-
-    private static String resolveMouseMode() {
-        String mode = System.getenv("BRIEF_MOUSE");
-        if (mode == null || mode.isBlank()) return "select";
-        return mode;
     }
 
     private static List<Tool> buildTools(Config config) {
@@ -258,11 +256,11 @@ public final class ChatConversationScreen
 
         if (msg instanceof MouseMessage mouse && mouse.isWheel()) {
             if (mouse.getButton() == MouseButton.MouseButtonWheelUp) {
-                historyViewport.scrollUp(3);
+                historyViewport.scrollUp(MOUSE_SCROLL_LINES);
                 return UpdateResult.from(this);
             }
             if (mouse.getButton() == MouseButton.MouseButtonWheelDown) {
-                historyViewport.scrollDown(3);
+                historyViewport.scrollDown(MOUSE_SCROLL_LINES);
                 return UpdateResult.from(this);
             }
         }
@@ -380,11 +378,40 @@ public final class ChatConversationScreen
             UpdateResult<? extends Model> r = handleSlashPaletteKey(key, msg);
             if (r != null) return r;
         }
+        UpdateResult<? extends Model> histResult = handleInputHistory(key);
+        if (histResult != null) return histResult;
+
         UpdateResult<? extends Model> navResult = handleNavigationKey(key);
         if (navResult != null) return navResult;
 
         if (KeyAliases.getKeyType(KeyAlias.KeyEnter) == key.type()) {
             return handleEnterKey();
+        }
+        return null;
+    }
+
+    private UpdateResult<? extends Model> handleInputHistory(
+        KeyPressMessage key
+    ) {
+        if (key.type() == KeyType.KeyUp && composer.line() == 0) {
+            String entry = inputHistory.previous(composer.value());
+            if (entry != null) {
+                composer.reset();
+                composer.insertString(entry);
+                return UpdateResult.from(this);
+            }
+        }
+        if (
+            key.type() == KeyType.KeyDown &&
+            inputHistory.isBrowsing() &&
+            composer.line() >= composer.lineCount() - 1
+        ) {
+            String entry = inputHistory.next();
+            if (entry != null) {
+                composer.reset();
+                composer.insertString(entry);
+                return UpdateResult.from(this);
+            }
         }
         return null;
     }
@@ -518,17 +545,23 @@ public final class ChatConversationScreen
     }
 
     private UpdateResult<? extends Model> handleEnterKey() {
-        String text = resolveSubmitText();
+        String text = normalizeSubmittedText(resolveSubmitText());
         if (text.isEmpty() || waiting) return UpdateResult.from(this);
 
         long now = System.currentTimeMillis();
-        if (text.equals(lastEnterText) && (now - lastEnterAtMs) < 1000) {
+        if (
+            text.equals(lastEnterText) &&
+            (now - lastEnterAtMs) < ENTER_DEBOUNCE_WINDOW_MS
+        ) {
             composer.reset();
             clearPasteState();
             return UpdateResult.from(this);
         }
         lastEnterText = text;
         lastEnterAtMs = now;
+        if (storesInputHistory(text)) {
+            inputHistory.push(text);
+        }
         return submitUserText(text);
     }
 
@@ -971,8 +1004,7 @@ public final class ChatConversationScreen
     }
 
     private UpdateResult<? extends Model> submitUserText(String text) {
-        if (text == null) text = "";
-        text = text.trim();
+        text = normalizeSubmittedText(text);
         if (text.isEmpty() || waiting) return UpdateResult.from(this);
 
         if (text.startsWith("/")) {
@@ -998,7 +1030,7 @@ public final class ChatConversationScreen
 
             // /locate: without args opens interactive overlay, with args goes to LLM
             if (sc instanceof LocateSlashCommand.Command) {
-                String locateQuery = parseLocateQuery(text);
+                String locateQuery = LocateSlashCommand.extractQuery(text);
                 if (locateQuery.isBlank()) {
                     // No args: open interactive input overlay
                     composer.reset();
@@ -1122,17 +1154,30 @@ public final class ChatConversationScreen
         }
     }
 
-    private static String parseLocateQuery(String input) {
-        if (input == null) return "";
-        String trimmed = input.trim();
-        if (!trimmed.toLowerCase().startsWith("/locate")) return "";
-        String rest = trimmed.substring("/locate".length()).trim();
+    static boolean storesInputHistory(String text) {
+        String normalized = normalizeSubmittedText(text);
+        if (normalized.isEmpty()) return false;
+        if (!normalized.startsWith("/")) return true;
+
+        SlashCommand slashCommand = SlashCommands.matchInvocation(
+            SlashCommands.defaults(),
+            normalized
+        );
         if (
-            rest.length() >= 2 && rest.startsWith("\"") && rest.endsWith("\"")
-        ) {
-            rest = rest.substring(1, rest.length() - 1);
-        }
-        return rest;
+            slashCommand == null ||
+            slashCommand.quits() ||
+            slashCommand instanceof ModelSlashCommand ||
+            slashCommand instanceof ConfigSlashCommand
+        ) return false;
+        if (
+            slashCommand instanceof LocateSlashCommand.Command &&
+            LocateSlashCommand.extractQuery(normalized).isBlank()
+        ) return false;
+        return SLASH_LLM_OVERRIDES.containsKey(slashCommand.name());
+    }
+
+    private static String normalizeSubmittedText(String text) {
+        return text == null ? "" : text.trim();
     }
 
     private Conversation newConversationLikeCurrent() {
@@ -1525,7 +1570,7 @@ public final class ChatConversationScreen
     private void append(Role role, ChatMessage.Source source, String content) {
         int index = conversation.getMessages().size();
         conversation.addMessage(
-            new ChatMessage(
+            ChatMessage.builder(
                 "m_%04d_%s".formatted(
                     index + 1,
                     UUID.randomUUID().toString().substring(0, 8)
@@ -1537,13 +1582,8 @@ public final class ChatConversationScreen
                 content == null ? "" : content,
                 OffsetDateTime.now(ZoneOffset.UTC),
                 conversation.getDefaultModel(),
-                conversation.getProvider().name().toLowerCase(),
-                null,
-                null,
-                null,
-                null,
-                null
-            )
+                conversation.getProvider().name().toLowerCase()
+            ).build()
         );
     }
 

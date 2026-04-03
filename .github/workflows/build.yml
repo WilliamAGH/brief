@@ -10,6 +10,9 @@ on:
       - main
       - dev
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -35,4 +38,46 @@ jobs:
           ./gradlew --version
 
       - name: Build application
-        run: ./gradlew build --no-daemon
+        run: ./gradlew build shadowJar --no-daemon
+
+  publish-snapshot:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Temurin JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: gradle
+
+      - name: Build fat JAR
+        run: ./gradlew shadowJar --no-daemon
+
+      - name: Publish snapshot JAR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          jars=(build/libs/brief-*-all.jar)
+          if [ "${#jars[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one brief-*-all.jar in build/libs/"
+            ls -la build/libs
+            exit 1
+          fi
+
+          cp "${jars[0]}" build/libs/brief.jar
+          TAG="snapshot-${GITHUB_REF_NAME}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "Snapshot (${GITHUB_REF_NAME})" \
+              --prerelease \
+              --notes "Latest build from \`${GITHUB_REF_NAME}\`. Updated automatically on every push."
+          fi
+          gh release upload "$TAG" build/libs/brief.jar --clobber

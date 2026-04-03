@@ -34,15 +34,17 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build distribution
+      - name: Build distribution and fat JAR
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
-        run: ./gradlew distZip -Pversion="$VERSION"
+        run: ./gradlew distZip shadowJar -Pversion="$VERSION"
 
-      - name: Prepare latest release asset
+      - name: Prepare release assets
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
-        run: cp "build/distributions/brief-${VERSION}.zip" "build/distributions/brief.zip"
+        run: |
+          cp "build/distributions/brief-${VERSION}.zip" "build/distributions/brief.zip"
+          cp "build/libs/brief-${VERSION}-all.jar" "build/libs/brief.jar"
 
       - name: Calculate SHA256
         id: sha
@@ -62,6 +64,8 @@ jobs:
           files: |
             build/distributions/brief-${{ steps.version.outputs.VERSION }}.zip
             build/distributions/brief.zip
+            build/libs/brief-${{ steps.version.outputs.VERSION }}-all.jar
+            build/libs/brief.jar
           generate_release_notes: true
 
       - name: Update latest tag

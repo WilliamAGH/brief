@@ -102,7 +102,7 @@ public final class ToolExecutor {
             .map(this::toDomainToolCall)
             .toList();
         conversation.addMessage(
-            new ChatMessage(
+            ChatMessage.builder(
                 "asst_" + shortId(),
                 conversation.getId(),
                 conversation.getMessages().size(),
@@ -111,13 +111,8 @@ public final class ToolExecutor {
                 msg.content().orElse(""),
                 OffsetDateTime.now(ZoneOffset.UTC),
                 model,
-                conversation.getProvider().name().toLowerCase(),
-                null,
-                domainCalls,
-                null,
-                null,
-                null
-            )
+                conversation.getProvider().name().toLowerCase()
+            ).toolCalls(domainCalls).build()
         );
     }
 
@@ -163,7 +158,7 @@ public final class ToolExecutor {
         }
 
         conversation.addMessage(
-            new ChatMessage(
+            ChatMessage.builder(
                 "tool_" + shortId(),
                 conversation.getId(),
                 conversation.getMessages().size(),
@@ -172,13 +167,8 @@ public final class ToolExecutor {
                 resultText,
                 OffsetDateTime.now(ZoneOffset.UTC),
                 model,
-                conversation.getProvider().name().toLowerCase(),
-                null,
-                null,
-                toolCallId,
-                null,
-                null
-            )
+                conversation.getProvider().name().toLowerCase()
+            ).toolCallId(toolCallId).build()
         );
 
         builder.addMessage(

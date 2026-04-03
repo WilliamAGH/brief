@@ -7,6 +7,9 @@ import java.util.List;
 /** Renders a selection overlay for any list of PaletteItems. */
 public final class PaletteOverlay {
 
+    private static final int MIN_INNER_WIDTH = 20;
+    private static final int MIN_INNER_HEIGHT = 10;
+
     private PaletteOverlay() {}
 
     /**
@@ -46,7 +49,10 @@ public final class PaletteOverlay {
         int innerHeight,
         int dividerRow
     ) {
-        if (innerWidth < 20 || innerHeight < 10) return null;
+        if (
+            innerWidth < MIN_INNER_WIDTH ||
+            innerHeight < MIN_INNER_HEIGHT
+        ) return null;
 
         int total = items.size();
         int maxItems = Math.max(

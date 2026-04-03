@@ -1,0 +1,18 @@
+# [TY1] readValue() must not use Object.class
+# Deserializing to Object.class loses all type information.
+# Use a typed class or TypeReference<T> for type-safe deserialization.
+
+id: java-readvalue-no-object-class
+language: java
+severity: error
+message: "[TY1] readValue(*, Object.class) loses type safety. Fix: use typed class or TypeReference<T>"
+
+rule:
+  pattern: $MAPPER.readValue($JSON, Object.class)
+
+files:
+  - "src/main/java/**/*.java"
+
+ignores:
+  - "**/generated/**"
+  - "**/test/**"

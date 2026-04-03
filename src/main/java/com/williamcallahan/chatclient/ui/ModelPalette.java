@@ -90,7 +90,7 @@ final class ModelPalette {
         // Typing: append printable characters to filter
         if (key.type() == KeyType.KeyRunes) {
             char[] runes = key.runes();
-            if (runes != null && runes.length > 0 && runes[0] >= 32) {
+            if (runes != null && runes.length > 0 && runes[0] >= ' ') {
                 filter += new String(runes);
                 selectedIndex = 0;
                 return new PaletteResult(true, null);

@@ -1,0 +1,15 @@
+pre-commit:
+  parallel: false
+  commands:
+    lint:
+      run: make lint
+
+pre-push:
+  parallel: false
+  commands:
+    lint:
+      run: make lint
+    test:
+      run: make test
+    build:
+      run: make build

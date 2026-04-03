@@ -27,6 +27,7 @@ public final class SummaryService {
     // Thresholds for placeholder usage
     private static final int PLACEHOLDER_MIN_LINES = 3;
     private static final int PLACEHOLDER_MIN_CHARS = 150;
+    private static final int MIN_MESSAGES_FOR_SUMMARIZATION = 2;
 
     // Summarization tuning
     private static final double SUMMARY_WORD_RATIO = 0.85;
@@ -127,7 +128,7 @@ public final class SummaryService {
         }
 
         List<ChatMessage> messages = new ArrayList<>(conversation.getMessages());
-        if (messages.size() <= 2) {
+        if (messages.size() <= MIN_MESSAGES_FOR_SUMMARIZATION) {
             return new TrimResult(messages, false, false);
         }
 
@@ -169,7 +170,7 @@ public final class SummaryService {
     }
 
     private ChatMessage createSummaryMessage(Conversation conversation, int index, String model, String summary) {
-        return new ChatMessage(
+        return ChatMessage.builder(
             "summary_" + UUID.randomUUID().toString().substring(0, 8),
             conversation.getId(),
             index,
@@ -178,9 +179,8 @@ public final class SummaryService {
             "[Earlier conversation summarized]\n" + summary,
             OffsetDateTime.now(ZoneOffset.UTC),
             model,
-            conversation.getProvider().name().toLowerCase(),
-            null, null, null, null, null
-        );
+            conversation.getProvider().name().toLowerCase()
+        ).build();
     }
 
     private List<ChatMessage> buildTrimmedList(

@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: run run-local run-local-tui build clean dist local-tui release-test release test
+.PHONY: run run-local run-local-tui build clean dist local-tui release-test release test test-clipboard-local lint lint-ast lint-deprecation hooks-install
 
 run: build
 	@set -a; [ -f .env ] && . ./.env; set +a; ./build/install/brief/bin/brief
@@ -14,10 +14,30 @@ run-local run-local-tui:
 	TUI4J_LOCAL_PATH=$$TUI4J_LOCAL_JAR TUI4J_SOURCE=local $(MAKE) run
 
 build:
-	@JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew installDist -q 2>&1 | grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true
+	@set -o pipefail; JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew installDist -q 2>&1 | { grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true; }
 
 test:
 	@set -o pipefail; JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew test -q 2>&1 | { grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true; }
+
+test-clipboard-local: build
+	@set -o pipefail; JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew testClasses -q 2>&1 | { grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true; }
+	@./scripts/test-clipboard-local.sh
+
+lint: lint-ast lint-deprecation ## Run all linters
+
+lint-ast: ## Run ast-grep rules for Java naming and type safety
+	@ast-grep scan -c sgconfig.yml src/main/java/
+
+lint-deprecation: ## Fail on deprecated API usage from project or dependency code
+	@set -o pipefail; JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED" ./gradlew deprecationCheck --rerun-tasks -q 2>&1 | { grep -v -E "(WARNING:|JAVA_TOOL_OPTIONS)" || true; }
+
+hooks-install:
+	@if ! command -v lefthook >/dev/null 2>&1; then \
+		echo "lefthook not found in PATH."; \
+		echo "Install it first, for example: brew install lefthook"; \
+		exit 1; \
+	fi
+	@lefthook install -f
 
 local-tui:
 	@cd ../tui4j && ./gradlew jar

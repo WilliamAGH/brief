@@ -1,10 +1,11 @@
 plugins {
     id("java")
     id("application")
+    id("com.gradleup.shadow") version "9.4.1"
 }
 
 group = "com.williamcallahan"
-version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.2.0"
+version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.2.1"
 
 java {
     toolchain {
@@ -79,12 +80,41 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.2")
 }
 
-tasks.processResources {
-    filesMatching("version.properties") {
-        expand("version" to project.version)
+val generateVersionProps by tasks.registering {
+    val versionValue = version.toString()
+    val outputFile = layout.buildDirectory.file("generated-resources/version.properties")
+    inputs.property("version", versionValue)
+    outputs.file(outputFile)
+    doLast {
+        outputFile.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText("app.version=$versionValue\n")
+        }
+    }
+}
+sourceSets.main { resources.srcDir(generateVersionProps.map { layout.buildDirectory.dir("generated-resources") }) }
+
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
+}
+
+tasks.shadowJar {
+    archiveClassifier.set("all")
+    mergeServiceFiles()
+    manifest {
+        attributes(
+            "Main-Class" to "com.williamcallahan.chatclient.Main",
+            "Enable-Native-Access" to "ALL-UNNAMED",
+        )
     }
 }
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.register("deprecationCheck") {
+    group = "verification"
+    description = "Fails the build on deprecated API usage in main or test sources."
+    dependsOn(tasks.compileJava, tasks.compileTestJava)
 }

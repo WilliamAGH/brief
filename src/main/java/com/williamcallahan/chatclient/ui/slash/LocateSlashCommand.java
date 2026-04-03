@@ -14,13 +14,16 @@ package com.williamcallahan.chatclient.ui.slash;
  */
 public final class LocateSlashCommand {
 
+    public static final String NAME = "/locate";
+    private static final int QUOTED_QUERY_MIN_LENGTH = 2;
+
     private LocateSlashCommand() {}
 
     public static final class Command implements SlashCommand {
 
         @Override
         public String name() {
-            return "/locate";
+            return NAME;
         }
 
         @Override
@@ -55,7 +58,7 @@ public final class LocateSlashCommand {
      * Used when routing to the LLM for conversational responses.
      */
     public static String toUserRequest(String inputLine) {
-        String query = parseQuery(inputLine);
+        String query = extractQuery(inputLine);
         if (query.isBlank()) {
             return "Find a place or location for me.";
         }
@@ -66,7 +69,7 @@ public final class LocateSlashCommand {
      * Creates a system prompt instructing the LLM how to use Apple Maps tools.
      */
     public static String toLlmPrompt(String inputLine) {
-        String query = parseQuery(inputLine);
+        String query = extractQuery(inputLine);
 
         StringBuilder sb = new StringBuilder();
         sb.append("User requested location/place search via /locate.\n");
@@ -98,13 +101,17 @@ public final class LocateSlashCommand {
         return sb.toString().trim();
     }
 
-    private static String parseQuery(String input) {
+    public static String extractQuery(String input) {
         if (input == null) return "";
         String trimmed = input.trim();
-        if (!trimmed.toLowerCase().startsWith("/locate")) return "";
-        String rest = trimmed.substring("/locate".length()).trim();
+        if (!trimmed.toLowerCase().startsWith(NAME)) return "";
+        String rest = trimmed.substring(NAME.length()).trim();
         // Remove quotes if present
-        if (rest.length() >= 2 && rest.startsWith("\"") && rest.endsWith("\"")) {
+        if (
+            rest.length() >= QUOTED_QUERY_MIN_LENGTH &&
+            rest.startsWith("\"") &&
+            rest.endsWith("\"")
+        ) {
             rest = rest.substring(1, rest.length() - 1);
         }
         return rest;

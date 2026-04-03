@@ -1,0 +1,19 @@
+# [DM1f] Ban DTO suffix
+# DTOs are an anti-pattern. Use domain records/classes instead.
+
+id: java-ban-dto-suffix
+language: java
+severity: error
+message: "[DM1f] DTO suffix banned. Fix: PersonDTO → Person, PersonRef, PersonBrief"
+
+rule:
+  kind: class_declaration
+  has:
+    kind: identifier
+    regex: ^[A-Z][a-zA-Z0-9]*(DTO|Dto)$
+
+files:
+  - "src/main/java/**/*.java"
+
+ignores:
+  - "**/generated/**"

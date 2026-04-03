@@ -1,6 +1,6 @@
 package com.williamcallahan.chatclient.ui.slash;
 
-import com.williamcallahan.chatclient.AppInfo;
+import com.williamcallahan.chatclient.AppMetadata;
 
 /** /about output. */
 public final class AboutSlashCommand {
@@ -45,7 +45,7 @@ public final class AboutSlashCommand {
             Email: william@williamcallahan.com
             Twitter: https://x.com/WilliamCallahan
             LinkedIn: https://www.linkedin.com/in/williamacallahan/
-            """.formatted(AppInfo.VERSION)
+            """.formatted(AppMetadata.VERSION)
                 .trim();
         }
     }

@@ -1,0 +1,19 @@
+# [DM1f] Ban Manager suffix
+# *Manager is too vague. Use specific domain roles instead.
+
+id: java-ban-manager-suffix
+language: java
+severity: error
+message: "[DM1f] *Manager suffix banned. Fix: UserManager → UserService, UserHandler"
+
+rule:
+  kind: class_declaration
+  has:
+    kind: identifier
+    regex: Manager$
+
+files:
+  - "src/main/java/**/*.java"
+
+ignores:
+  - "**/generated/**"
