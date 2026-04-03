@@ -4,7 +4,7 @@
 id: java-ban-impl-suffix
 language: java
 severity: error
-message: "[NAM1] *Impl suffix banned. Fix: FooImpl → FooAdapter, DefaultFoo"
+message: "[NAM1] *Impl suffix banned. Fix: FooImpl → DefaultFoo, or use a domain-specific name"
 
 rule:
   kind: class_declaration
