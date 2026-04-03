@@ -282,13 +282,11 @@ final class MouseSelectionController {
             "copy",
             "length=" + result.length() + " local=" + copiedLocally
         );
+        lastActionAtMs = System.currentTimeMillis();
+        lastStatus = STATUS_COPIED;
         if (copiedLocally) {
-            lastActionAtMs = System.currentTimeMillis();
-            lastStatus = STATUS_COPIED;
             return null;
         }
-        lastActionAtMs = 0L;
-        lastStatus = null;
         return Command.copyToClipboard(result);
     }
 

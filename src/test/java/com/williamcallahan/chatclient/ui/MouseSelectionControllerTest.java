@@ -45,7 +45,7 @@ class MouseSelectionControllerTest {
                 CopyToClipboardMessage.class
             );
             assertEquals("first", copy.text());
-            assertNull(controller.transientStatus(System.currentTimeMillis()));
+            assertEquals("COPIED", controller.transientStatus(System.currentTimeMillis()));
         } finally {
             restoreClipboardProperty(previous);
         }
