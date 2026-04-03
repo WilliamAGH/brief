@@ -10,6 +10,8 @@ import java.util.List;
  */
 final class InputHistory {
 
+    private static final int MAX_ENTRIES = 500;
+
     private final List<String> entries = new ArrayList<>();
     private int cursor = -1;
     private String draft = "";
@@ -21,6 +23,9 @@ final class InputHistory {
         if (!entries.isEmpty() && entries.getLast().equals(text)) {
             reset();
             return;
+        }
+        if (entries.size() >= MAX_ENTRIES) {
+            entries.removeFirst();
         }
         entries.add(text);
         reset();
