@@ -19,7 +19,6 @@ import java.util.List;
  */
 public final class PlacesOverlay {
 
-    private static final char FIRST_PRINTABLE_CHARACTER = ' ';
     private static final int INPUT_SCROLL_PREFIX_LENGTH = 3;
 
     private boolean open = false;
@@ -218,7 +217,7 @@ public final class PlacesOverlay {
             char[] runes = key.runes();
             if (runes != null) {
                 for (char c : runes) {
-                    if (c >= FIRST_PRINTABLE_CHARACTER) {
+                    if (c >= ' ') {
                         inputBuffer.append(c);
                     }
                 }

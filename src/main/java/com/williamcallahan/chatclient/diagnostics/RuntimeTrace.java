@@ -13,11 +13,13 @@ public final class RuntimeTrace {
     private static final Path TRACE_PATH = Path.of(
         "/tmp/brief-runtime-trace.log"
     );
+    private static final boolean ENABLED =
+        "1".equals(System.getenv(TRACE_ENV));
 
     private RuntimeTrace() {}
 
     public static boolean enabled() {
-        return "1".equals(System.getenv(TRACE_ENV));
+        return ENABLED;
     }
 
     public static void reset(String sessionName) {

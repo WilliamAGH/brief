@@ -6,19 +6,21 @@ import java.util.List;
 /** Slash command registry and helpers. */
 public final class SlashCommands {
 
+    private static final List<SlashCommand> DEFAULTS = List.of(
+        new WeatherSlashCommand.Command(),
+        new LocateSlashCommand.Command(),
+        new ModelSlashCommand(),
+        new ConfigSlashCommand(),
+        new NewSlashCommand.Command(),
+        new ClearSlashCommand.Command(),
+        new AboutSlashCommand.Command(),
+        new Quit()
+    );
+
     private SlashCommands() {}
 
     public static List<SlashCommand> defaults() {
-        return List.of(
-            new WeatherSlashCommand.Command(),
-            new LocateSlashCommand.Command(),
-            new ModelSlashCommand(),
-            new ConfigSlashCommand(),
-            new NewSlashCommand.Command(),
-            new ClearSlashCommand.Command(),
-            new AboutSlashCommand.Command(),
-            new Quit()
-        );
+        return DEFAULTS;
     }
 
     public static List<SlashCommand> filterForComposer(
