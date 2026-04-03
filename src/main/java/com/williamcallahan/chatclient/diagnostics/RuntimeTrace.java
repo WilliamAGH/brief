@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 
-/** Temporary runtime trace for diagnosing the make run mouse-event path. */
+/** Runtime trace for diagnosing terminal event paths (opt-in via BRIEF_RUNTIME_TRACE=1). */
 public final class RuntimeTrace {
 
     private static final String TRACE_ENV = "BRIEF_RUNTIME_TRACE";
