@@ -36,6 +36,21 @@ class InputHistoryTest {
     }
 
     @Test
+    void evictsOldestEntryWhenCapacityExceeded() {
+        InputHistory history = new InputHistory();
+        for (int i = 0; i < 501; i++) {
+            history.push("entry-" + i);
+        }
+        assertEquals("entry-500", history.previous(""));
+        String oldest = "entry-500";
+        String entry;
+        while ((entry = history.previous("")) != null) {
+            oldest = entry;
+        }
+        assertEquals("entry-1", oldest);
+    }
+
+    @Test
     void resetExitsBrowsingWithoutDroppingEntries() {
         InputHistory history = new InputHistory();
         history.push("first");

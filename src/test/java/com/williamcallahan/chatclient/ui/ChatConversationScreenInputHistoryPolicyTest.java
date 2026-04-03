@@ -16,11 +16,13 @@ class ChatConversationScreenInputHistoryPolicyTest {
 
     @Test
     void skipsHistoryForUiOnlyAndLocalSlashCommands() {
+        assertFalse(ChatConversationScreen.storesInputHistory(null));
         assertFalse(ChatConversationScreen.storesInputHistory(""));
         assertFalse(ChatConversationScreen.storesInputHistory("   "));
         assertFalse(ChatConversationScreen.storesInputHistory("/model"));
         assertFalse(ChatConversationScreen.storesInputHistory("/config"));
         assertFalse(ChatConversationScreen.storesInputHistory("/locate"));
+        assertFalse(ChatConversationScreen.storesInputHistory("/quit"));
         assertFalse(ChatConversationScreen.storesInputHistory("/clear"));
         assertFalse(ChatConversationScreen.storesInputHistory("/about"));
         assertFalse(ChatConversationScreen.storesInputHistory("/does-not-exist"));

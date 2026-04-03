@@ -64,4 +64,18 @@ class MouseModeTest {
         assertEquals(MouseMode.SELECT, MouseMode.parse("   "));
         assertEquals(MouseMode.SELECT, MouseMode.parse("garbage"));
     }
+
+    @Test
+    void parseNormalizesAliasesToCanonicalValues() {
+        assertEquals("0", MouseMode.parse("off").value());
+        assertEquals("0", MouseMode.parse("native").value());
+        assertEquals("0", MouseMode.parse("false").value());
+        assertEquals("1", MouseMode.parse("all").value());
+        assertEquals("1", MouseMode.parse("true").value());
+        assertEquals("1", MouseMode.parse("1").value());
+        assertEquals("wheel", MouseMode.parse("btn").value());
+        assertEquals("wheel", MouseMode.parse("buttons").value());
+        assertEquals("wheel", MouseMode.parse("wheel").value());
+        assertEquals("select", MouseMode.parse("select").value());
+    }
 }
