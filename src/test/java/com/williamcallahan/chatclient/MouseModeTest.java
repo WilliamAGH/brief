@@ -1,5 +1,6 @@
 package com.williamcallahan.chatclient;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -41,5 +42,26 @@ class MouseModeTest {
         assertFalse(mode.enablesTargetCursor());
         assertFalse(mode.enablesHistorySelection());
         assertFalse(mode.enablesSelectionCursor());
+    }
+
+    @Test
+    void allModeEnablesAllMotionWithoutCellMotion() {
+        MouseMode mode = MouseMode.parse("all");
+
+        assertTrue(mode.enablesAllMotion());
+        assertFalse(mode.enablesCellMotion());
+        assertTrue(mode.enablesMouseClicks());
+        assertTrue(mode.enablesTargetCursor());
+        assertFalse(mode.enablesHistorySelection());
+        assertFalse(mode.enablesSelectionCursor());
+        assertFalse(mode.enablesSelectionAutoScroll());
+    }
+
+    @Test
+    void defaultsToSelectForNullBlankAndUnrecognized() {
+        assertEquals(MouseMode.SELECT, MouseMode.parse(null));
+        assertEquals(MouseMode.SELECT, MouseMode.parse(""));
+        assertEquals(MouseMode.SELECT, MouseMode.parse("   "));
+        assertEquals(MouseMode.SELECT, MouseMode.parse("garbage"));
     }
 }
