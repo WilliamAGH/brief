@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.williamcallahan"
-version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.2.1"
+version = findProperty("version")?.toString()?.takeIf { it != "unspecified" } ?: "0.2.2"
 
 java {
     toolchain {
