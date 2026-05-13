@@ -76,7 +76,7 @@ Dieses Projekt verwendet **Gradle Toolchains** mit **Temurin JDK 25** und **mise
 **Option 1: Verwendung von mise (empfohlen)**
 
 ```bash
-# Installieren Sie mise, falls noch nicht vorhanden: https://mise.jdnow.dev/
+# Installieren Sie mise, falls noch nicht vorhanden: https://mise.jdx.dev/
 mise install
 ```
 
