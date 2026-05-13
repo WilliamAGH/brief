@@ -2,6 +2,8 @@
 [![DeepWiki](src/main/resources/static/img/deepwiki-badge.svg)](https://deepwiki.com/WilliamAGH/brief)
 [![Docs](https://img.shields.io/badge/docs-mintlify-18b884)](https://www.mintlify.com/WilliamAGH/brief)
 
+[English](README.md) · [Deutsch](README_de.md)
+
 # Brief
 
 A terminal ChatGPT client for fast, keyboard-first chat. Includes slash commands, tool execution, and support for OpenAI-compatible providers.
@@ -37,6 +39,33 @@ java -jar brief.jar
 ```
 
 Dev builds: [main](https://github.com/WilliamAGH/brief/releases/tag/snapshot-main) · [dev](https://github.com/WilliamAGH/brief/releases/tag/snapshot-dev) (updated on every push)
+
+### Docker
+
+If you don't want to install Java locally, you can run Brief via Docker.
+
+1. **Build the image**:
+   ```bash
+   ./docker/docker-setup.sh
+   ```
+
+2. **Configure API Key**:
+   Create a `.env` file in `~/.config/brief/.env` with your API key:
+   ```bash
+   mkdir -p ~/.config/brief
+   echo "OPENAI_API_KEY=your_key_here" > ~/.config/brief/.env
+   ```
+
+3. **Run the container**:
+   ```bash
+   docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/root/.config/brief brief
+   ```
+
+#### Optional: Create an Alias
+To run `brief` simply by typing its name, add this to your `.bashrc` or `.zshrc`:
+```bash
+alias brief='docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/root/.config/brief brief'
+```
 
 ## Development
 

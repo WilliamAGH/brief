@@ -1,0 +1,34 @@
+# Stage 1: Build
+FROM eclipse-temurin:25-jdk-noble AS builder
+
+WORKDIR /app
+
+# Copy gradle files
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle.kts .
+COPY settings.gradle.kts .
+COPY gradle.properties .
+
+# Pre-download dependencies to improve build caching
+RUN ./gradlew dependencies --no-daemon || true
+
+# Copy source code
+COPY src src
+
+# Build the fat JAR
+RUN ./gradlew shadowJar --no-daemon
+
+# Stage 2: Runtime
+FROM eclipse-temurin:25-jre-noble
+
+WORKDIR /app
+
+# Copy the built JAR from the builder stage
+COPY --from=builder /app/build/libs/brief-*-all.jar /app/brief.jar
+
+# Terminal-Support verbessern
+ENV TERM=xterm-256color
+
+# Die Anwendung benötigt Native Access für das Terminal (tui4j/jline)
+ENTRYPOINT ["java", "--enable-native-access=ALL-UNNAMED", "-jar", "/app/brief.jar"]
