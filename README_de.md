@@ -50,11 +50,13 @@ Wenn Sie Java nicht lokal installieren möchten, können Sie Brief auch über Do
    ```
 
 2. **API-Key konfigurieren**:
-   Erstellen Sie eine `.env`-Datei unter `~/.config/brief/.env` mit Ihrem API-Key:
+   Erstellen Sie eine `.env`-Datei unter `~/.config/brief/.env` und fügen Sie Ihren API-Key hinzu:
    ```bash
    mkdir -p ~/.config/brief
-   echo "OPENAI_API_KEY=dein_key_hier" > ~/.config/brief/.env
+   ${EDITOR:-vi} ~/.config/brief/.env
    ```
+   Tragen Sie in der Datei die folgende Zeile mit Ihrem Schlüssel ein und speichern Sie diese:
+   `OPENAI_API_KEY=dein_key_hier`
 
 3. **Container starten**:
    ```bash

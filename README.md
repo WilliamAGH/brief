@@ -50,11 +50,13 @@ If you don't want to install Java locally, you can run Brief via Docker.
    ```
 
 2. **Configure API Key**:
-   Create a `.env` file in `~/.config/brief/.env` with your API key:
+   Create a `.env` file in `~/.config/brief/.env` and add your API key:
    ```bash
    mkdir -p ~/.config/brief
-   echo "OPENAI_API_KEY=your_key_here" > ~/.config/brief/.env
+   ${EDITOR:-vi} ~/.config/brief/.env
    ```
+   Add the following line to the file and save it:
+   `OPENAI_API_KEY=your_key_here`
 
 3. **Run the container**:
    ```bash
