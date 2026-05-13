@@ -16,11 +16,11 @@ This directory contains the files for creating a Docker image for Brief.
 2. **Run**:
    Start the container interactively. It is recommended to use a `.env` file for the API keys and to mount the configuration directory:
    ```bash
-   docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/root/.config/brief brief
+   docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/home/brief/.config/brief brief
    ```
 
 ## Notes
 
 - **Java Version**: The build image uses JDK 25, the final runtime image uses `eclipse-temurin:25-jre-noble`.
 - **Terminal**: For correct TUI display, `TERM=xterm-256color` is set in the container.
-- **Storage Location**: The application in the container expects the configuration at `/root/.config/brief`.
+- **Storage Location**: The application in the container expects the configuration at `/home/brief/.config/brief`.

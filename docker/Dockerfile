@@ -22,13 +22,21 @@ RUN ./gradlew shadowJar --no-daemon
 # Stage 2: Runtime
 FROM eclipse-temurin:25-jre-noble
 
+# Erstelle einen dedizierten Benutzer
+RUN useradd -m brief
+
 WORKDIR /app
 
-# Copy the built JAR from the builder stage
+# Kopiere das JAR und setze Berechtigungen
 COPY --from=builder /app/build/libs/brief-*-all.jar /app/brief.jar
+RUN chown brief:brief /app/brief.jar
 
 # Terminal-Support verbessern
 ENV TERM=xterm-256color
+
+# Wechsel zum nicht-privilegierten Benutzer
+USER brief
+ENV HOME=/home/brief
 
 # Die Anwendung benötigt Native Access für das Terminal (tui4j/jline)
 ENTRYPOINT ["java", "--enable-native-access=ALL-UNNAMED", "-jar", "/app/brief.jar"]

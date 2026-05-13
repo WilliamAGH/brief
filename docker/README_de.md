@@ -16,11 +16,11 @@ Dieses Verzeichnis enthält die Dateien zum Erstellen eines Docker-Images für B
 2. **Ausführen**:
    Starten Sie den Container interaktiv. Es wird empfohlen, eine `.env`-Datei für die API-Keys zu verwenden und das Konfigurationsverzeichnis zu mounten:
    ```bash
-   docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/root/.config/brief brief
+   docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/home/brief/.config/brief brief
    ```
 
 ## Hinweise
 
 - **Java Version**: Das Build-Image nutzt JDK 25, das finale Runtime-Image nutzt `eclipse-temurin:25-jre-noble`.
 - **Terminal**: Für eine korrekte Darstellung der TUI wird `TERM=xterm-256color` im Container gesetzt.
-- **Speicherort**: Die Anwendung im Container erwartet die Konfiguration unter `/root/.config/brief`.
+- **Speicherort**: Die Anwendung im Container erwartet die Konfiguration unter `/home/brief/.config/brief`.

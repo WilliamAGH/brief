@@ -58,13 +58,13 @@ Wenn Sie Java nicht lokal installieren möchten, können Sie Brief auch über Do
 
 3. **Container starten**:
    ```bash
-   docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/root/.config/brief brief
+   docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/home/brief/.config/brief brief
    ```
 
 #### Optional: Alias erstellen
 Damit Sie `brief` einfach durch Eingabe des Namens starten können, fügen Sie dies zu Ihrer `.bashrc` oder `.zshrc` hinzu:
 ```bash
-alias brief='docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/root/.config/brief brief'
+alias brief='docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/home/brief/.config/brief brief'
 ```
 
 ## Entwicklung

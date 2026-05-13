@@ -58,13 +58,13 @@ If you don't want to install Java locally, you can run Brief via Docker.
 
 3. **Run the container**:
    ```bash
-   docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/root/.config/brief brief
+   docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/home/brief/.config/brief brief
    ```
 
 #### Optional: Create an Alias
 To run `brief` simply by typing its name, add this to your `.bashrc` or `.zshrc`:
 ```bash
-alias brief='docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/root/.config/brief brief'
+alias brief='docker run -it --rm --env-file ~/.config/brief/.env -v ~/.config/brief:/home/brief/.config/brief brief'
 ```
 
 ## Development
