@@ -20,6 +20,7 @@ Settings are stored in `~/.config/brief/config`:
 openai.api_key=sk-...
 openai.base_url=https://api.openai.com/v1
 model=gpt-4o
+reasoning.effort=high
 user.name=Your Name
 config.priority=env
 ```
@@ -31,7 +32,16 @@ config.priority=env
 | `OPENAI_API_KEY` | API key (required) |
 | `OPENAI_BASE_URL` | Custom endpoint for alternative providers |
 | `LLM_MODEL` | Default model ID |
+| `BRIEF_REASONING_EFFORT` | Optional canonical Chat Completions `reasoning_effort`; accepted values are defined by [`ReasoningEffort`](../src/main/java/com/williamcallahan/chatclient/ReasoningEffort.java) |
 | `BRIEF_CONFIG_PRIORITY` | `env` (default) or `config` — which source wins when both set |
+
+## Reasoning Effort
+
+Leave reasoning effort unset to preserve the selected model or provider default. Set it explicitly with `BRIEF_REASONING_EFFORT`, `reasoning.effort` in the config file, or `brief --reasoning-effort <value>`; the command-line choice takes precedence over the configured source.
+
+Brief forwards every explicit value as the standard Chat Completions `reasoning_effort` field. It does not infer capabilities from the model name or base URL, and it does not silently change an unsupported value. An OpenAI-compatible provider can therefore accept or reject the requested field according to its own API support.
+
+[`ReasoningEffort`](../src/main/java/com/williamcallahan/chatclient/ReasoningEffort.java) is the sole accepted-value owner.
 
 ### Display Flags
 

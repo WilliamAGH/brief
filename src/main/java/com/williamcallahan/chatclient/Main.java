@@ -58,7 +58,7 @@ public class Main {
         Config config;
         Model startScreen;
         try {
-            config = new Config();
+            config = new Config(CliOptions.parse(args));
             startScreen = selectStartScreen(config);
         } catch (ConfigException e) {
             System.err.println(e.getMessage());

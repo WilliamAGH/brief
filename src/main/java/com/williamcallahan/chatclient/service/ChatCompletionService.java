@@ -16,6 +16,10 @@ public final class ChatCompletionService {
         this.openAi = openAi;
     }
 
+    ChatCompletionCreateParams.Builder newRequestBuilder() {
+        return openAi.newChatCompletionRequestBuilder();
+    }
+
     /**
      * Sends a chat completion request.
      *
@@ -35,7 +39,7 @@ public final class ChatCompletionService {
      * @return The assistant's response text
      */
     public String complete(String prompt, String model) {
-        ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+        ChatCompletionCreateParams params = newRequestBuilder()
             .model(model)
             .messages(List.of(
                 ChatCompletionMessageParam.ofUser(

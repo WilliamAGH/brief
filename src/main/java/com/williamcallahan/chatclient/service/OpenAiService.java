@@ -2,6 +2,7 @@ package com.williamcallahan.chatclient.service;
 
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.models.Model;
 import com.williamcallahan.chatclient.Config;
 import com.williamcallahan.chatclient.ConfigException;
@@ -13,6 +14,7 @@ public final class OpenAiService {
 
     private final OpenAIClient client;
     private final String baseUrl;
+    private final ChatCompletionRequestBuilder requestBuilder;
 
     private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
 
@@ -51,6 +53,7 @@ public final class OpenAiService {
                 """.formatted(target));
         }
 
+        this.requestBuilder = new ChatCompletionRequestBuilder(config);
         // Build client with resolved API key and base URL (env > config > default)
         this.client = OpenAIOkHttpClient.builder()
             .apiKey(apiKey)
@@ -65,6 +68,10 @@ public final class OpenAiService {
 
     public String baseUrl() {
         return baseUrl;
+    }
+
+    ChatCompletionCreateParams.Builder newChatCompletionRequestBuilder() {
+        return requestBuilder.create();
     }
 
     public List<String> modelChoices() {

@@ -3,7 +3,10 @@ package com.williamcallahan.chatclient;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
+import java.util.function.Function;
 
 /**
  * User preferences stored in ~/.config/brief/config.
@@ -16,18 +19,39 @@ public final class Config {
     private static final long ERROR_DISPLAY_MS = 10_000;
 
     private final Path configPath;
+    private final Function<String, String> environment;
+    private final CliOptions cliOptions;
     private final Properties props = new Properties();
     private final Priority priority;
     private String lastError;
     private long lastErrorAt;
 
     public Config() {
+        this(CliOptions.empty());
+    }
+
+    public Config(CliOptions cliOptions) {
+        this(defaultConfigPath(), System::getenv, cliOptions);
+    }
+
+    Config(Path configPath, Map<String, String> environment, CliOptions cliOptions) {
+        this(configPath, environment::get, cliOptions);
+    }
+
+    private Config(Path configPath, Function<String, String> environment, CliOptions cliOptions) {
+        this.configPath = configPath;
+        this.environment = environment;
+        this.cliOptions = cliOptions;
+        load();
+        this.priority = resolvePriority();
+        resolveReasoningEffort();
+    }
+
+    private static Path defaultConfigPath() {
         String xdg = System.getenv("XDG_CONFIG_HOME");
         Path base = (xdg != null && !xdg.isBlank()) ? Path.of(xdg)
             : Path.of(System.getProperty("user.home"), ".config");
-        this.configPath = base.resolve("brief").resolve("config");
-        load();
-        this.priority = resolvePriority();
+        return base.resolve("brief").resolve("config");
     }
 
     /** Returns the active priority mode. */
@@ -38,13 +62,20 @@ public final class Config {
     public String resolveApiKey()  { return resolve("OPENAI_API_KEY", "openai.api_key"); }
     public String resolveBaseUrl() { return resolve("OPENAI_BASE_URL", "openai.base_url"); }
     public String resolveModel()   { return resolve("LLM_MODEL", "model"); }
+    public Optional<ReasoningEffort> resolveReasoningEffort() {
+        return cliOptions.reasoningEffort().or(
+            () -> ReasoningEffort.fromConfiguredValue(
+                resolve("BRIEF_REASONING_EFFORT", "reasoning.effort")
+            )
+        );
+    }
     public String resolveAppleMapsToken() { return resolve("APPLE_MAPS_TOKEN", "apple_maps.token"); }
 
     public boolean hasResolvedApiKey() { return resolveApiKey() != null; }
     public boolean hasAppleMapsToken() { return resolveAppleMapsToken() != null; }
 
     private String resolve(String envVar, String propKey) {
-        String env = System.getenv(envVar);
+        String env = environment.apply(envVar);
         String cfg = props.getProperty(propKey, "").trim();
         boolean hasEnv = env != null && !env.isBlank();
         boolean hasCfg = !cfg.isEmpty();
@@ -58,7 +89,7 @@ public final class Config {
 
     /** Bootstrap priority (this meta-setting always uses env > config). */
     private Priority resolvePriority() {
-        String env = System.getenv("BRIEF_CONFIG_PRIORITY");
+        String env = environment.apply("BRIEF_CONFIG_PRIORITY");
         if (env != null && !env.isBlank()) {
             return "config".equalsIgnoreCase(env.trim()) ? Priority.CONFIG : Priority.ENV;
         }

@@ -25,6 +25,8 @@ The app prompts for your API key on first launch and saves it to `~/.config/brie
 
 For alternative providers (OpenRouter, Ollama, LMStudio), see the [configuration guide](docs/environment-variables-api-keys.md).
 
+To explicitly set standard Chat Completions reasoning effort without tying it to a provider or model name, run `brief --reasoning-effort high`. Omit the option to retain the selected model/provider default; the full configuration and supported values are in the [configuration guide](docs/environment-variables-api-keys.md#reasoning-effort).
+
 ### GitHub Releases
 
 Download from [releases](https://github.com/WilliamAGH/brief/releases/latest). Requires Java 25.

@@ -198,8 +198,7 @@ public final class ToolExecutor {
         Conversation conversation,
         String modelOverride
     ) {
-        ChatCompletionCreateParams.Builder b =
-            ChatCompletionCreateParams.builder();
+        ChatCompletionCreateParams.Builder b = chat.newRequestBuilder();
         b.model(
             modelOverride != null && !modelOverride.isBlank()
                 ? modelOverride
