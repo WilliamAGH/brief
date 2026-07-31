@@ -2,13 +2,13 @@
 
 ## Context
 
-`src/main/java/com/williamcallahan/chatclient/ui/ChatConversationScreen.java` is **1631 lines** — 4.7x over the project's 350 LOC hard cap (LOC1). It is the main Elm Architecture `Model` for the chat view, but it has accumulated rendering, input handling, overlay management, mouse selection, LLM transport, message history rendering, slash command routing, and paste handling into a single file.
+`src/main/java/com/williamcallahan/chatclient/ui/ChatConversationScreen.java` is **1631 lines** — 3.3x over the project's 500 LOC hard cap (LOC1). It is the main Elm Architecture `Model` for the chat view, but it has accumulated rendering, input handling, overlay management, mouse selection, LLM transport, message history rendering, slash command routing, and paste handling into a single file.
 
 This is a **Java TUI chat client** built on the **tui4j** framework (Elm Architecture: `init()`, `update(Message)`, `view()`).
 
 ## Objective
 
-Audit the file for **duplicated logic** — both within the repo and against tui4j dependency — then decompose what remains into SRP-compliant units (≤350 LOC each).
+Audit the file for **duplicated logic** — both within the repo and against tui4j dependency — then decompose what remains into SRP-compliant units (≤500 LOC each).
 
 **Order matters: deduplicate FIRST, decompose SECOND.** Splitting before deduplicating just spreads the smell across more files.
 
@@ -19,7 +19,7 @@ Audit the file for **duplicated logic** — both within the repo and against tui
 
 ## Mandatory Rules (from AGENTS.md)
 
-- **LOC1**: All written, non-generated source files ≤ 350 lines. Zero tolerance.
+- **LOC1**: All written, non-generated source files ≤ 500 lines. Zero tolerance.
 - **MO1**: No monoliths. New logic → new file. Duplicate logic → extract.
 - **DRY1**: Remove duplication; reuse existing utilities.
 - **SS1-SS5**: Single semantic owner. No mirror owners.
@@ -97,7 +97,7 @@ After deduplication, the remaining ChatConversationScreen logic should decompose
 1. List of local code confirmed as dependency duplication (with decompiled evidence)
 2. List of intra-repo duplication (with file:line references)
 3. Implementation: deletions first, then extractions, then wiring
-4. All files ≤ 350 LOC after changes
+4. All files ≤ 500 LOC after changes
 5. All existing tests pass (`make test`)
 6. Lint passes (`make lint`) with no new warnings
 
@@ -111,6 +111,6 @@ make test
 # Lint
 make lint
 
-# Line counts — every written file must be ≤ 350
+# Line counts — every written file must be ≤ 500
 find src/main/java -name '*.java' -exec wc -l {} + | sort -rn | head -20
 ```

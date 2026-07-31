@@ -12,7 +12,7 @@ See `AGENTS.md` ([LOC1], [MO1], [DEP1]).
 
 - **SRP only**: each new type/method has one reason to change ([MO1]).
 - **New feature → new file**; do not grow monoliths ([MO1]).
-- **No edits to >350 LOC files**; first split/retrofit ([LOC1]).
+- **No edits to >500 LOC files**; first split/retrofit ([LOC1]).
 - **Upstream Alignment**: Matches tui4j structure where relevant.
 
 ## Decision matrix: create new file vs edit existing
@@ -40,7 +40,7 @@ If any bullet fails, create a new type.
 1. **Search/reuse first**: confirm a type/pattern doesn’t already exist.
 2. **Pick the correct package**.
 3. **Name by role** (ban generic names; suffix declares meaning).
-4. **Keep the file small** (stay comfortably under 350 LOC; split by concept early) ([LOC1]).
+4. **Keep the file small** (stay comfortably under 500 LOC; split by concept early) ([LOC1]).
 5. **Add/adjust tests** using existing patterns/utilities.
 6. **Verify** with repo-standard commands.
 

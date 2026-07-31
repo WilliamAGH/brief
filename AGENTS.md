@@ -20,7 +20,7 @@
 - SYCO1 No empty confirmations ("You're right", "Absolutely") before investigation; verify then cite evidence.
 - SLOP1 No `*Adapter`, `*Transformer`, `*Normalizer`, `*Bridge`, `*Converter`, `*Mapper`, `*Compatibility`, `*Transition` modules that exist solely to reshape data between equivalent types; fix the type mismatch at source.
 - DEP1 Avoid unnecessary dependencies and unused code.
-- LOC1 Line Count: All written, non-generated source files <= 350 lines (SRP Enforcer; Zero Tolerance).
+- LOC1 Line Count: All written, non-generated source files <= 500 lines (SRP Enforcer; Zero Tolerance).
 - MO1 No Monoliths: Strict SRP; Decision Logic (New/Edit/Extract); OCP Extension.
 
 ## Details
@@ -40,7 +40,7 @@
 - FMT1 Follow existing spacing, imports, and ordering; avoid style changes unrelated to the task.
 - TST1 Prefer fast, focused tests; keep tests aligned with the public contract.
 - DEP1 Remove unused imports, dependencies, and dead code.
-- LOC1 Hard Cap: all written files <= 350 LOC. Enforcer: SRP/DDD. Zero Tolerance: no edits to >350 LOC files; split/retrofit first. Exempt: generated content.
+- LOC1 Hard Cap: all written files <= 500 LOC. Enforcer: SRP/DDD. Zero Tolerance: no edits to >500 LOC files; split/retrofit first. Exempt: generated content.
 - MO1 Monoliths: avoid multi-concern files. Logic: New → New File; Bug → Edit; Logic → Extract. Strict SRP: separate logic by actor/reason. Boundary: typed contracts, inward deps.
 - Contract: `docs/contracts/code-change.md`
 
