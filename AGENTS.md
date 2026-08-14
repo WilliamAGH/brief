@@ -17,6 +17,7 @@
 - CMT1 Comments and Javadocs only when they add clarity; avoid academic tags like @author/@since/@version.
 - FMT1 Keep formatting and style consistent with the surrounding file.
 - TST1 Update or add tests when behavior changes; do not change behavior without coverage.
+- PRC1 Repo-file-editing tasks start in a dedicated git worktree on a task branch (review/read-only tasks exempt); finish = tests green, worktree commits merged to `dev`, pushed, and any CI run watched to a terminal verdict.
 - SYCO1 No empty confirmations ("You're right", "Absolutely") before investigation; verify then cite evidence.
 - SLOP1 No `*Adapter`, `*Transformer`, `*Normalizer`, `*Bridge`, `*Converter`, `*Mapper`, `*Compatibility`, `*Transition` modules that exist solely to reshape data between equivalent types; fix the type mismatch at source.
 - DEP1 Avoid unnecessary dependencies and unused code.
