@@ -1,0 +1,11 @@
+build/
+.gradle/
+.idea/
+.vscode/
+bin/
+docker/
+.git/
+.env
+*.jar
+*.zip
+*.tar
